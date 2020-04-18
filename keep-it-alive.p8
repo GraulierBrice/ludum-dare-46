@@ -11,16 +11,12 @@ function debug()
 	print("cpu sys "..stat(2),cam.x,cam.y+20)
 end
 
+function _reset_globals()
 game={
 	play=false,
 	menu_id=1,
 	gyro=0,
 	menu_select=1
-}
-
-cam={
-	x=104,
-	y=32
 }
 
 phy={
@@ -31,13 +27,22 @@ phy={
 	accel=100
 }
 
+maps={
+	{
+		spawns={
+			{{pos=vec_add(vec_mul(vector(12,7), vector(8,8)), vector(4,4)), rot=-0.25}},
+			{{pos=vec_add(vec_mul(vector(12,6), vector(8,8)), vector(4,4)), rot=0},
+			 {pos=vec_add(vec_mul(vector(12,8), vector(8,8)), vector(4,4)), rot=0.5}}}
+	},
+}
+
+cam=vector(0,0)
+end
+
 -->8
 -- main program
 function _init()
-	local change1 = change_menu(1)
-	for i in all(menus[2].opts) do
-		add(menus[2].run,change1)
-	end
+	_reset_globals()
 end
 
 function _update()
@@ -77,13 +82,14 @@ patients={}
 dropzones={}
 gum={}
 
-function game_start(nb_players, mode)
+function game_start(nb_players, map, mode)
 	game.play=true
 	cars={}
 	gum={}
 	physics_start()
 	for i=1, nb_players do
-		add(cars, rigidbody(56+16*i, 64, 0, 7, 7))
+		local spawn = maps[map].spawns[nb_players][i]
+		add(cars, rigidbody(spawn.pos.x, spawn.pos.y, spawn.rot, 7, 7))
 	end
 	--add(patients, collider(80,64,0,8,8,true))
 	--add(patients, collider(120,64,0,8,8,true))
@@ -108,7 +114,6 @@ function game_update()
 end
 
 function game_draw()
-	print(#cars)
 	if (#cars == 1) then
 		draw_screen(1, vector(-64, -64), vector(0,0))
 	elseif (#cars == 2) then
@@ -183,6 +188,7 @@ function draw_screen(player, cam_offset, ui_offset)
 	cam = vec_add(cars[player].pos, cam_offset)
 	camera(cam.x, cam.y)
 	rectfill(cam.x, cam.y, cam.x+128, cam.y+128, 0)
+	map(0,0,0,0,128,128)
 	draw_gum()
 
 
@@ -208,9 +214,9 @@ menus = {
 	{
 		opts={"one-player","two-player coop","two-play versus","credits"},
 		run={
-			function() game_start(1) end,
-			function() game_start(2) end,
-			function() game_start(2) end,
+			function() game_start(1, 1, nil) end,
+			function() game_start(2, 1, nil) end,
+			function() game_start(2, 1, nil) end,
 			change_menu(2)},
 		--run={function() game.play=true end,nil,nil,},
 		l=72,
