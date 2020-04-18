@@ -31,22 +31,16 @@ phy={
 	accel=100
 }
 
-cam={}
-
 -->8
 -- main program
 function _init()
-	game.play=false
-	cam=vector(0,0)
-	a=rigidbody(64,64,0, 10,10)
-	b=collider(90,64,0, 20,20)
 	local change1 = change_menu(1)
 	for i in all(menus[2].opts) do
 		add(menus[2].run,change1)
 	end
 end
 
-function _update60()
+function _update()
 	if game.play then
 		game_update()
 	else
@@ -56,6 +50,7 @@ end
 
 function _draw()
 	cls()
+	map(0,0,0,0,128,128)
 	gyro_colours()
 	if game.play then
 		game_draw()
@@ -78,6 +73,8 @@ end
 -->8
 -- game program
 cars={}
+patients={}
+dropzones={}
 gum={}
 
 function game_start(nb_players, mode)
@@ -88,6 +85,9 @@ function game_start(nb_players, mode)
 	for i=1, nb_players do
 		add(cars, rigidbody(56+16*i, 64, 0, 7, 7))
 	end
+	--add(patients, collider(80,64,0,8,8,true))
+	--add(patients, collider(120,64,0,8,8,true))
+	--add(dropzones, collider(200,64,0,8,8,true))
 end
 
 function game_update()
@@ -97,6 +97,12 @@ function game_update()
 	end
 	for i=1, #cars do
 		update_car(cars[i], i-1)
+	end
+	for patient in all(patients) do
+		update_patient(patient)
+	end
+	for dropzone in all(dropzones) do
+		update_dropzones(dropzone)
 	end
 	physics_update()
 end
@@ -122,6 +128,24 @@ function draw_gum()
 		pset(gum[i].x, gum[i].y, 7)
 	end
 end
+
+function update_patient(patient)
+	for car in all(cars) do
+		if (col_overlap_col(patient, car)) and not car.load then 
+			del(patients,patient)
+			car.load = patient
+		end
+	end
+end
+
+function update_dropzones(dropzone)
+	for car in all(cars) do
+		if (col_overlap_col(dropzone, car)) and car.load then 
+			car.load = nil
+		end
+	end
+end
+
 
 function update_car(car, player)
 	local input = vector(0,0)
@@ -161,15 +185,17 @@ function draw_screen(player, cam_offset, ui_offset)
 	rectfill(cam.x, cam.y, cam.x+128, cam.y+128, 0)
 	draw_gum()
 
-	if (player == 1) then
-		for i=#cars, 1, -1 do
-			draw_car(cars[i])
-		end
-	elseif (player == 2) then
-		for i=1, #cars do
-			draw_car(cars[i])
-		end
+
+	for dropzone in all(dropzones) do
+		spr(19,dropzone.pos.x-4,dropzone.pos.y-4)
 	end
+	for patient in all(patients) do
+		spr(1,patient.pos.x-4,patient.pos.y-4)
+	end
+	for car in all(cars) do
+		draw_car(car)
+	end
+
 end
 
 -->8
@@ -203,12 +229,11 @@ menus = {
 function menu_update()
 	if (btnp(2)) game.menu_select = max(game.menu_select-1,1)
 	if (btnp(3)) game.menu_select = min(game.menu_select+1,#menus[game.menu_id].opts)
-	if (btnp(4)) then if (menus[game.menu_id].run[game.menu_select]) then menus[game.menu_id].run[game.menu_select]() end end
+	if (btnp(4) or btnp(5)) then if (menus[game.menu_id].run[game.menu_select]) then menus[game.menu_id].run[game.menu_select]() end end
 end
 
 function menu_draw()
 	camera(cam.x,cam.y)
-	map(0,0,0,0,128,128)
 	menus.display(menus[game.menu_id])
 	spr(108,cam.x+96,cam.y+96,4,2)
 	spr(108,cam.x+96,cam.y+112,4,2,true,true)
