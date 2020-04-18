@@ -16,16 +16,19 @@ cam={
 
 phy={
 	dt=1/60,
-	friction=0.5,
-	bounce=0.5
+	friction=2,
+	bounce=0.5,
+	grip=1,
+	accel=100
 }
 
+cam={}
 
 -->8
 -- main program
 function _init()
-	a=rigidbody(64,64,0, 10,10)
-	b=collider(90,64,0, 20,20)
+	game.play=false
+	cam=vector(0,0)
 end
 
 function _update60()
@@ -59,21 +62,99 @@ end
 
 -->8
 -- game program
-function game_update()
-	local input = vector(0,0)
-	if (btn(0)) input.x-=1
-	if (btn(1)) input.x+=1
-	if (btn(2)) input.y-=1
-	if (btn(3)) input.y+=1
-	input = vec_mul(input, vector(40, 40))
-	a.acc = vec_add(a.acc, input)
+cars={}
+gum={}
 
+function game_start(nb_players, mode)
+	game.play=true
+	cars={}
+	gum={}
+	physics_start()
+	for i=1, nb_players do
+		add(cars, rigidbody(56+16*i, 64, 0, 7, 7))
+	end
+end
+
+function game_update()
+	if (btnp(4)) then
+		_init()
+		return
+	end
+	for i=1, #cars do
+		update_car(cars[i], i-1)
+	end
 	physics_update()
 end
 
 function game_draw()
-	spr(0,cam.x+64,cam.y+64)
+	print(#cars)
+	if (#cars == 1) then
+		draw_screen(1, vector(-64, -64), vector(0,0))
+	elseif (#cars == 2) then
+		draw_screen(1, vector(-64, -32), vector(0,0))
+		memcpy(0x1000, 0x6000, 0xfff)
+		draw_screen(2, vector(-64, -96), vector(0,0))
+		memcpy(0x6000, 0x1000, 0xfff)
+		
+		local left = vec_add(cam, vector(0, 63))
+		local right = vec_add(cam, vector(128, 63))
+		line(left.x, left.y, right.x, right.y, 0)
+	end
+end
 
+function draw_gum()
+	for i=1,#gum do
+		pset(gum[i].x, gum[i].y, 7)
+	end
+end
+
+function update_car(car, player)
+	local input = vector(0,0)
+	if (btn(0, player)) input.x-=1
+	if (btn(1, player)) input.x+=1
+	if (btn(2, player)) input.y-=1
+	if (btn(3, player)) input.y+=1
+		
+	local acc = input.y * phy.accel
+	local mom = input.x * phy.grip * vec_len(car.vel) * phy.dt
+	car.acc = vec_add(car.acc, inv_tr_vector(car, vector(0, acc)))
+	car.mom = mom
+
+	local loc_vel = tr_vector(car, car.vel)
+	local d_rot = abs(atan2(loc_vel.x, loc_vel.y)-0.25)
+	local speed = vec_len(car.vel)
+	if (speed > 0.5 and (d_rot%0.5) > 0.15) then
+		add(gum, car.pos)
+	end
+end
+
+function draw_car(car)
+ 	for x=-3, 4 do
+	 	for y=-3, 4 do
+			local col=sget(x+3, y+3)
+			if col>0 then 
+	  			local dst = vec_add(car.pos, inv_tr_vector(car, vector(x,y)))
+ 	  			pset(dst.x, dst.y, col)
+		 	end
+  		end
+ 	end
+end
+
+function draw_screen(player, cam_offset, ui_offset)
+	cam = vec_add(cars[player].pos, cam_offset)
+	camera(cam.x, cam.y)
+	rectfill(cam.x, cam.y, cam.x+128, cam.y+128, 0)
+	draw_gum()
+
+	if (player == 1) then
+		for i=#cars, 1, -1 do
+			draw_car(cars[i])
+		end
+	elseif (player == 2) then
+		for i=1, #cars do
+			draw_car(cars[i])
+		end
+	end
 end
 
 -->8
@@ -81,7 +162,11 @@ end
 menus = {
 	{
 		opts={"one-player","two-player coop","two-play versus","credits"},
-		run={function() game.play=true end,nil,nil,function() game.menu_id=2 end},
+		run={
+			function() game_start(1) end,
+			function() game_start(2) end,
+			function() game_start(2) end,
+			function() game.menu_id=2 end},
 		l=72,
 		w=45
 	},
@@ -130,6 +215,11 @@ end
 colliders={}
 rigidbodies={}
 
+function physics_start()
+	colliders={}
+	rigidbodies={}
+end
+
 function physics_update()
 	for i=1, #rigidbodies do
 		rb_update(rigidbodies[i])
@@ -137,7 +227,7 @@ function physics_update()
 end
 
 function rigidbody(x, y, r, w, h)
-	local rb = collider(x, y, r, w, h, true)
+	local rb = collider(x, y, r, w, h, false)
 	rb.acc = vector(0, 0)
 	rb.vel = vector(0, 0)
 	rb.mom = 0
@@ -159,7 +249,6 @@ function rb_update(rb)
 	local new_rot = rb.rot + new_mom * phy.dt
 	
 	local new_col = collider(new_pos.x, new_pos.y, new_rot, rb.w, rb.h, false, true)
-	print(rb.tor)
 	for i=1, #colliders do
 		local col = colliders[i]
 		if (col != rb) then
@@ -185,7 +274,7 @@ function rb_update(rb)
 	rb.vel = new_vel
 	rb.pos = new_pos
 	rb.mom = new_mom
-	rb.rot = new_rot
+	rb.rot = new_rot % 1
 end
 
 function collider(x, y, r, w, h, trg, ign)
@@ -232,7 +321,6 @@ function col_normal(c, p)
 	local q=tr_point(c, p)
 	local n
 	local angle = atan2(q.x, q.y)
-	print(angle)
 		if (angle<0.125)  then n = col_left(c)
 	elseif (angle==0.125) then n = vec_add(col_left(c), col_up(c))
 	elseif (angle<0.375)  then n = col_up(c)
@@ -247,6 +335,7 @@ function col_normal(c, p)
 end
 
 function col_draw(c)
+	color(11)
 	local ul=col_ul_corner(c)
 	local br=col_br_corner(c)
 	local bl=col_bl_corner(c)
