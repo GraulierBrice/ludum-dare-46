@@ -72,17 +72,24 @@ function game_update()
 end
 
 function game_draw()
-
+	spr(0,cam.x+64,cam.y+64)
 
 end
 
 -->8
 -- menu program
-local menus = {
+menus = {
 	{
 		opts={"one-player","two-player coop","two-play versus","credits"},
+		run={function() game.play=true end,nil,nil,function() game.menu_id=2 end},
 		l=72,
 		w=45
+	},
+	{ 	
+		opts={"game designers  ","uLQUIRO","bRICE","programmers     ","uLQUIRO","bRICE","sound designer  ","pUDDY"},
+		run={},
+		l=72,
+		w=85
 	},
 	display = function(menu)
 		draw_menu_box(cam.x+64-menu.l/2,cam.y+64-menu.w/2,menu.l,menu.w,menu.opts) end
@@ -91,6 +98,7 @@ local menus = {
 function menu_update()
 	if (btnp(2)) game.menu_select = max(game.menu_select-1,1)
 	if (btnp(3)) game.menu_select = min(game.menu_select+1,#menus[game.menu_id].opts)
+	if (btnp(4)) then if (menus[game.menu_id].run[game.menu_select]) then menus[game.menu_id].run[game.menu_select]() end end
 end
 
 function menu_draw()
