@@ -12,37 +12,44 @@ function debug()
 end
 
 function _reset_globals()
-game={
-	play=false,
-	menu_id=1,
-	gyro=0,
-	menu_select=1
-}
+	game={
+		play=false,
+		menu_id=1,
+		gyro=0,
+		menu_select=1,
+		map_id=1
+	}
 
-phy={
-	dt=1/60,
-	friction=2,
-	bounce=0.5,
-	grip=1,
-	accel=100
-}
+	phy={
+		dt=1/30,
+		friction=2,
+		bounce=0.5,
+		grip=0.5,
+		accel=100
+	}
 
-maps={
-	{
-		spawns={
-			{{pos=vec_add(vec_mul(vector(12,7), vector(8,8)), vector(4,4)), rot=-0.25}},
-			{{pos=vec_add(vec_mul(vector(12,6), vector(8,8)), vector(4,4)), rot=0},
-			 {pos=vec_add(vec_mul(vector(12,8), vector(8,8)), vector(4,4)), rot=0.5}}}
-	},
-}
+	maps={
+		{
+			spawns={
+				{{pos=vec_add(vec_mul(vector(12,7), vector(8,8)), vector(4,4)), rot=-0.25}},
+				{{pos=vec_add(vec_mul(vector(12,6), vector(8,8)), vector(4,4)), rot=0},
+				{pos=vec_add(vec_mul(vector(12,8), vector(8,8)), vector(4,4)), rot=0.5}}},
+			corners={upper_left=vector(6,0), bottom_right=vector(39,21)}
+			
+		},
+	}
 
-cam=vector(0,0)
+	cam=vector(0,0)
 end
 
 -->8
 -- main program
 function _init()
 	_reset_globals()
+	local change1 = change_menu(1)
+	for i in all(menus[2].opts) do
+		add(menus[2].run,change1)
+	end
 end
 
 function _update()
@@ -55,7 +62,6 @@ end
 
 function _draw()
 	cls()
-	map(0,0,0,0,128,128)
 	gyro_colours()
 	if game.play then
 		game_draw()
@@ -81,19 +87,19 @@ cars={}
 patients={}
 dropzones={}
 gum={}
-
 function game_start(nb_players, map, mode)
 	game.play=true
 	cars={}
 	gum={}
+	n_gums=0
 	physics_start()
 	for i=1, nb_players do
 		local spawn = maps[map].spawns[nb_players][i]
 		add(cars, rigidbody(spawn.pos.x, spawn.pos.y, spawn.rot, 7, 7))
 	end
-	--add(patients, collider(80,64,0,8,8,true))
-	--add(patients, collider(120,64,0,8,8,true))
-	--add(dropzones, collider(200,64,0,8,8,true))
+	add(patients, collider(27*8,16,0,8,8,true))
+	add(patients, collider(21*8,10,0,8,8,true))
+	add(dropzones, collider(12*8+4,7*8+4,0,8,24,true))
 end
 
 function game_update()
@@ -128,9 +134,19 @@ function game_draw()
 	end
 end
 
+function add_gum(p)
+	local q=vector(flr(p.x), flr(p.y))
+	if (#gum>=1000) then
+		gum[n_gums]=q
+	else
+		add(gum, q)
+	end
+	n_gums=(n_gums+1)%1000
+end
+
 function draw_gum()
 	for i=1,#gum do
-		pset(gum[i].x, gum[i].y, 7)
+		pset(gum[i].x, gum[i].y, 0)
 	end
 end
 
@@ -168,7 +184,7 @@ function update_car(car, player)
 	local d_rot = abs(atan2(loc_vel.x, loc_vel.y)-0.25)
 	local speed = vec_len(car.vel)
 	if (speed > 0.5 and (d_rot%0.5) > 0.15) then
-		add(gum, car.pos)
+		add_gum(car.pos)
 	end
 end
 
@@ -188,7 +204,12 @@ function draw_screen(player, cam_offset, ui_offset)
 	cam = vec_add(cars[player].pos, cam_offset)
 	camera(cam.x, cam.y)
 	rectfill(cam.x, cam.y, cam.x+128, cam.y+128, 0)
-	map(0,0,0,0,128,128)
+
+	local orig = vec_mul(cam, vector(1/8,1/8))
+	local dest = vector(flr(cam.x/8)*8, flr(cam.y/8)*8)
+
+	map(orig.x, orig.y, dest.x, dest.y, 17, 17)
+
 	draw_gum()
 
 
@@ -198,10 +219,16 @@ function draw_screen(player, cam_offset, ui_offset)
 	for patient in all(patients) do
 		spr(1,patient.pos.x-4,patient.pos.y-4)
 	end
-	for car in all(cars) do
-		draw_car(car)
-	end
 
+	if (player == 1) then
+		for i=#cars, 1, -1 do
+			draw_car(cars[i])
+		end
+	elseif (player == 2) then
+		for i=1, #cars do
+			draw_car(cars[i])
+		end
+	end
 end
 
 -->8
@@ -240,6 +267,7 @@ end
 
 function menu_draw()
 	camera(cam.x,cam.y)
+	map(0,0,0,0,128,128)
 	menus.display(menus[game.menu_id])
 	spr(108,cam.x+96,cam.y+96,4,2)
 	spr(108,cam.x+96,cam.y+112,4,2,true,true)
@@ -286,43 +314,57 @@ function rigidbody(x, y, r, w, h)
 	return rb
 end
 
+function rb_col_response(rb, col, data)
+	local hit = col_overlap_col(data.new_col, col)
+	if (hit) then
+		local norm = col_normal(data.new_col, hit)
+		local loc_hit = inv_tr_point(data.new_col, hit)
+		local loc_hit_norm = inv_tr_vector(data.new_col, norm)
+		local loc_hit_tan =  mul_mat_vec(rot_matrix(0.25), loc_hit_norm)
+
+		local v = vec_dot(data.new_vel, norm) * (1 + phy.bounce)
+
+		data.new_vel = vec_sub(data.new_vel, vec_mul(vector(v,v),norm))
+		
+		data.new_pos = vec_add(rb.pos, vec_mul(data.new_vel, vector(phy.dt, phy.dt)))
+		data.new_col.pos = data.new_pos
+	end
+	return data
+end
+
 function rb_update(rb)
-	local dt=vector(phy.dt, phy.dt)
-	
 	local new_acc = vec_sub(rb.acc, vec_mul(rb.vel, vector(phy.friction, phy.friction)))
 	
-	local new_vel = vec_add(rb.vel, vec_mul(new_acc, dt))
-	local new_pos = vec_add(rb.pos, vec_mul(new_vel, dt))
-	
+	local new_vel = vec_add(rb.vel, vec_mul(new_acc, vector(phy.dt, phy.dt)))
+	local new_pos = vec_add(rb.pos, vec_mul(new_vel, vector(phy.dt, phy.dt)))
+
 	local new_tor = rb.tor - rb.mom * phy.friction
 	local new_mom = rb.mom + new_tor * phy.dt
 	local new_rot = rb.rot + new_mom * phy.dt
-	
+
 	local new_col = collider(new_pos.x, new_pos.y, new_rot, rb.w, rb.h, false, true)
+	
+	local data = {new_col=new_col, new_vel=new_vel, new_pos=new_pos}
+	
 	for i=1, #colliders do
 		local col = colliders[i]
 		if (col != rb) then
 			if (not col.trg) then
-				local hit = col_overlap_col(new_col, col)
-				if (hit) then
-					local norm = col_normal(new_col, hit)
-					local loc_hit = inv_tr_point(new_col, hit)
-					local loc_hit_norm = inv_tr_vector(new_col, norm)
-					local loc_hit_tan =  mul_mat_vec(rot_matrix(0.25), loc_hit_norm)
-
-					local v = vec_dot(new_vel, norm) * (1 + phy.bounce)
-
-					new_vel = vec_sub(new_vel, vec_mul(vector(v,v),norm))
-					
-					new_pos = vec_add(rb.pos, vec_mul(new_vel, dt))
-					new_col.pos = new_pos
-				end
+				data=rb_col_response(rb, col, data)
 			end
 		end
 	end
+
+	local p = vec_mul(vec_add(data.new_pos, vec_mul(vec_norm(data.new_vel), vector(8,8))), vector(1/8,1/8))
+	if (fget(mget(p.x, p.y), 0)) then
+		local col = collider(flr(p.x)*8+4, flr(p.y)*8+4, 0, 8, 8, false, true)
+		data = rb_col_response(rb, col, data)
+	end
+
+
 	rb.acc = vector(0,0)
-	rb.vel = new_vel
-	rb.pos = new_pos
+	rb.vel = data.new_vel
+	rb.pos = data.new_pos
 	rb.mom = new_mom
 	rb.rot = new_rot % 1
 end
@@ -385,7 +427,6 @@ function col_normal(c, p)
 end
 
 function col_draw(c)
-	color(11)
 	local ul=col_ul_corner(c)
 	local br=col_br_corner(c)
 	local bl=col_bl_corner(c)
