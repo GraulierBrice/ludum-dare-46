@@ -2,6 +2,15 @@ pico-8 cartridge // http://www.pico-8.com
 version 21
 __lua__
 -- configs and global data
+function debug()
+	color(0)
+	rectfill(cam.x,cam.y,cam.x+60,cam.y+30)
+	color(7)
+	print("memory "..stat(0),cam.x,cam.y)
+	print("cpu tot "..stat(1),cam.x,cam.y+10)
+	print("cpu sys "..stat(2),cam.x,cam.y+20)
+end
+
 game={
 	play=false,
 	menu_id=1,
@@ -29,6 +38,12 @@ cam={}
 function _init()
 	game.play=false
 	cam=vector(0,0)
+	a=rigidbody(64,64,0, 10,10)
+	b=collider(90,64,0, 20,20)
+	local change1 = change_menu(1)
+	for i in all(menus[2].opts) do
+		add(menus[2].run,change1)
+	end
 end
 
 function _update60()
@@ -47,8 +62,8 @@ function _draw()
 	else
 		menu_draw()
 	end
+	debug()
 end
-
 function gyro_colours()
 	game.gyro=game.gyro%50+1
 	if game.gyro > 25 then
@@ -159,6 +174,10 @@ end
 
 -->8
 -- menu program
+function change_menu(n)
+	return function() game.menu_select=1 game.menu_id=n end 
+end
+
 menus = {
 	{
 		opts={"one-player","two-player coop","two-play versus","credits"},
@@ -166,7 +185,8 @@ menus = {
 			function() game_start(1) end,
 			function() game_start(2) end,
 			function() game_start(2) end,
-			function() game.menu_id=2 end},
+			change_menu(2)},
+		--run={function() game.play=true end,nil,nil,},
 		l=72,
 		w=45
 	},
@@ -209,7 +229,6 @@ end
 function selection(n)
 	if game.menu_select==n then color(7) else color(6) end
 end
-
 -->8
 -- physics
 colliders={}
