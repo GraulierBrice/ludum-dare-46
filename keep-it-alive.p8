@@ -385,7 +385,9 @@ function draw_menu_box(x,y,l,w, opts)
 	local off_set = 1
 	if time()%2 > 1 then
 		pal(1,12)
+		pal(2,1)
 	else
+		pal(1,1)
 		pal(2,12)
 	end
 	spr(6,x+l/2-8,y-7)
@@ -484,8 +486,8 @@ function rb_update(rb)
 	end
 
 	if (fget(mget(p.x,p.y), 2)) then
-		if (vec_len(data.new_vel)>30) then
-			if (rb.rot>0.5) new_rot -= 0.001*vec_len(data.new_vel) else new_rot += 0.001*vec_len(data.new_vel)
+		if (vec_len(data.new_vel)>50) then
+			if (rb.rot>0.5) new_rot -= 0.02 else new_rot += 0.02
 			if(rb.load) then rb.load.hp -= rb.load.dmg_drift/3 blood(rb.pos,true) end
 		end
 	end
