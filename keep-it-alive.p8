@@ -21,12 +21,12 @@ function _reset_globals()
 	}
 
 	phy={
-		dt=1/30,
-		friction=2,
-		bounce=0.5,
-		grip=0.5,
-		accel=100,
-		max_vel_action=10
+        dt=1/30,
+        friction=1.5,
+        bounce=0.5,
+        grip=0.33,
+        accel=100,
+        max_vel_action=20
 	}
 
 	maps={
