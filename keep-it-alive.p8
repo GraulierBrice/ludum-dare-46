@@ -68,7 +68,7 @@ function _draw()
 	else
 		menu_draw()
 	end
-	debug()
+	--debug()
 end
 function gyro_colours()
 	game.gyro=game.gyro%50+1
@@ -95,10 +95,10 @@ function game_start(nb_players, map, mode)
 	physics_start()
 	for i=1, nb_players do
 		local spawn = maps[map].spawns[nb_players][i]
-		add(cars, rigidbody(spawn.pos.x, spawn.pos.y, spawn.rot, 7, 7))
+		add(cars, rigidbody(spawn.pos.x, spawn.pos.y, spawn.rot, 7, 7, car_hit))
 	end
-	add(patients, collider(27*8,16,0,8,8,true))
-	add(patients, collider(21*8,10,0,8,8,true))
+	default_patient(27*8,16,0,8,8,true)
+	--add(patients, collider(21*8,10,0,8,8,true))
 	add(dropzones, collider(12*8+4,7*8+4,0,8,24,true))
 end
 
@@ -150,24 +150,72 @@ function draw_gum()
 	end
 end
 
+-- patients section
+
+function default_patient(x, y)
+	return patient(x, y, 10, 1, 2, 0.75, 2, 1)
+end
+
+function patient(x, y, hp, dmg_unloaded, dmg_drift, dmg_loaded, hit_dmg, hit_dmg_threshold)
+	local p = collider(27*8,16,0,8,8,true)
+	p.max_hp = hp
+	p.hp = hp
+	p.car_id = 0
+	p.dmg_unloaded = dmg_unloaded
+	p.dmg_drift = dmg_drift
+	p.dmg_loaded = dmg_loaded
+	p.hit_dmg = hit_dmg
+	p.hit_dmg_threshold = hit_dmg_threshold
+	add(patients, p)
+	return p
+end
+
 function update_patient(patient)
-	for car in all(cars) do
-		if (col_overlap_col(patient, car)) and not car.load then 
-			del(patients,patient)
-			car.load = patient
+	if (patient.car_id <= 0) then
+		patient.hp -= phy.dt * patient.dmg_unloaded
+
+		for i=1, #cars do
+			if (col_overlap_col(patient, cars[i])) and not cars[i].load then 
+				cars[i].load = patient
+				patient.car_id = i
+				break
+			end
+		end
+	else
+		if (car_drifting(cars[patient.car_id])) then
+			patient.hp -= phy.dt * patient.dmg_drift
+		else
+			patient.hp -= phy.dt * patient.dmg_loaded
 		end
 	end
 end
 
 function update_dropzones(dropzone)
 	for car in all(cars) do
-		if (col_overlap_col(dropzone, car)) and car.load then 
+		if (col_overlap_col(dropzone, car)) and car.load then
+			del(patients, car.load)
 			car.load = nil
 			dropzone.patient = 0
 		end
 	end
 end
 
+-- car section
+function car_drifting(car)
+	local loc_vel = tr_vector(car, car.vel)
+	local d_rot = abs(atan2(loc_vel.x, loc_vel.y)-0.25)
+	local speed = vec_len(car.vel)
+	return speed > 0.5 and (d_rot%0.5) > 0.15
+end
+
+function car_hit(car, other, delta_v)
+	if (car.load != nil) then
+		local impact = vec_len(delta_v)
+		if (impact >= car.load.hit_dmg_threshold) then
+			car.load.hp -= car.load.hit_dmg
+		end
+	end
+end
 
 function update_car(car, player)
 	local input = vector(0,0)
@@ -181,10 +229,7 @@ function update_car(car, player)
 	car.acc = vec_add(car.acc, inv_tr_vector(car, vector(0, acc)))
 	car.mom = mom
 
-	local loc_vel = tr_vector(car, car.vel)
-	local d_rot = abs(atan2(loc_vel.x, loc_vel.y)-0.25)
-	local speed = vec_len(car.vel)
-	if (speed > 0.5 and (d_rot%0.5) > 0.15) then
+	if (car_drifting(car)) then
 		add_gum(car.pos)
 	end
 end
@@ -223,7 +268,12 @@ function draw_screen(player, cam_offset, ui_offset)
 		end
 	end
 	for patient in all(patients) do
-		spr(1,patient.pos.x-4,patient.pos.y-4)
+		if (patient.car_id <= 0) then
+			spr(1,patient.pos.x-4, patient.pos.y-4)
+		else
+			print(patient.car_id, cam.x, cam.y, 11)
+			print(patient.hp.."/"..patient.max_hp, cam.x, cam.y+10, 8)
+		end
 	end
 
 	if (player == 1) then
@@ -310,8 +360,8 @@ function physics_update()
 	end
 end
 
-function rigidbody(x, y, r, w, h)
-	local rb = collider(x, y, r, w, h, false)
+function rigidbody(x, y, r, w, h, on_hit)
+	local rb = collider(x, y, r, w, h, false, on_hit)
 	rb.acc = vector(0, 0)
 	rb.vel = vector(0, 0)
 	rb.mom = 0
@@ -328,9 +378,18 @@ function rb_col_response(rb, col, data)
 		local loc_hit_norm = inv_tr_vector(data.new_col, norm)
 		local loc_hit_tan =  mul_mat_vec(rot_matrix(0.25), loc_hit_norm)
 
-		local v = vec_dot(data.new_vel, norm) * (1 + phy.bounce)
+		local dv = vec_dot(data.new_vel, norm) * (1 + phy.bounce)
+		local delta_v = vec_mul(vector(-dv,-dv),norm)
 
-		data.new_vel = vec_sub(data.new_vel, vec_mul(vector(v,v),norm))
+
+		if (rb.on_hit != nil) then
+			rb.on_hit(rb, col, delta_v)
+		end
+		if (col.on_hit != nil) then
+			col.on_hit(col, rb, delta_v)
+		end
+
+		data.new_vel = vec_add(data.new_vel, delta_v)
 		
 		data.new_pos = vec_add(rb.pos, vec_mul(data.new_vel, vector(phy.dt, phy.dt)))
 		data.new_col.pos = data.new_pos
@@ -348,7 +407,7 @@ function rb_update(rb)
 	local new_mom = rb.mom + new_tor * phy.dt
 	local new_rot = rb.rot + new_mom * phy.dt
 
-	local new_col = collider(new_pos.x, new_pos.y, new_rot, rb.w, rb.h, false, true)
+	local new_col = collider(new_pos.x, new_pos.y, new_rot, rb.w, rb.h, false, rb.on_hit, true)
 	
 	local data = {new_col=new_col, new_vel=new_vel, new_pos=new_pos}
 	
@@ -363,7 +422,7 @@ function rb_update(rb)
 
 	local p = vec_mul(vec_add(data.new_pos, vec_mul(vec_norm(data.new_vel), vector(8,8))), vector(1/8,1/8))
 	if (fget(mget(p.x, p.y), 0)) then
-		local col = collider(flr(p.x)*8+4, flr(p.y)*8+4, 0, 8, 8, false, true)
+		local col = collider(flr(p.x)*8+4, flr(p.y)*8+4, 0, 8, 8, false, nil, true)
 		data = rb_col_response(rb, col, data)
 	end
 
@@ -375,11 +434,12 @@ function rb_update(rb)
 	rb.rot = new_rot % 1
 end
 
-function collider(x, y, r, w, h, trg, ign)
+function collider(x, y, r, w, h, trg, on_hit, ign)
 	local c = transform(x, y, r)
 	c.w = w
 	c.h = h
 	c.trg = trg
+	c.on_hit = on_hit
 	if (not ign) then
 		add(colliders, c)
 	end
