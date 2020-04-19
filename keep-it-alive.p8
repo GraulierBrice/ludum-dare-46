@@ -84,11 +84,13 @@ cars={}
 patients={}
 dropzones={}
 gum={}
+morphines={}
 function game_start(nb_players, map, mode)
 	--music(0)
 	game.play=true
 	cars={}
 	gum={}
+
 	n_gums=0
 	game.map_id=map
 	physics_start()
@@ -106,6 +108,7 @@ function game_start(nb_players, map, mode)
 	default_patient(114*8,14*8,1)
 	default_patient(115*8,14*8,4)
 	--default_patient(27*8,84)
+	morphine(115*8,16*8)
 
 
 	--add(patients, collider(21*8,10,0,8,8,true))
@@ -219,6 +222,30 @@ function dropzone_hit(dropzone, other, rel_vel)
 	end
 end
 
+function morphine(x,y)
+	local m = collider(x,y,0,8,8,true, morphine_hit)
+	m.full=true
+	m.timer=0
+	add(morphines,m)
+	return m
+end
+
+function morphine_hit(morphine, other, rel_vel)
+	if (has(cars, other)) then
+		if (other.load and morphine.full) then
+			other.load.hp += 10
+			morphine.full = false
+		end
+	end
+end
+
+function update_morphine(morphine)
+	if not morphine.full then
+		morphine.timer += 1
+		if (morphine.timer > 300) morphine.full = true
+	end
+end
+
 -- car section
 function car_drifting(car)
 	local loc_vel = tr_vector(car, car.vel)
@@ -302,11 +329,21 @@ function draw_screen(player, cam_offset, ui_offset)
 	for dropzone in all(dropzones) do
 		if(dropzone.patient) then 
 			pal(12,dropzone.col)
-			sspr(24,dropzone.patient,8,9-dropzone.patient,dropzone.pos.x-4,dropzone.pos.y-4-dropzone.patient)
+			sspr(24,dropzone.patient,8,8-dropzone.patient,dropzone.pos.x-4,dropzone.pos.y-4-dropzone.patient)
 			pal(12,12)
 			dropzone.patient+=0.5
 			if (dropzone.patient>8) dropzone.patient=nil
 		end
+	end
+
+	for morphine in all(morphines) do
+		pal(11,0)
+		pal(7,0)
+		spr(2,morphine.pos.x+1,morphine.pos.y+1)
+		pal()
+		if (not morphine.full) pal(11,6)
+		spr(2,morphine.pos.x,morphine.pos.y-time()%2)
+		pal(11,11)
 	end
 
 
@@ -385,7 +422,9 @@ function draw_menu_box(x,y,l,w, opts)
 	local off_set = 1
 	if time()%2 > 1 then
 		pal(1,12)
+		pal(2,1)
 	else
+		pal(1,1)
 		pal(2,12)
 	end
 	spr(6,x+l/2-8,y-7)
@@ -478,6 +517,7 @@ function rb_update(rb)
 	end
 
 	local p = vec_mul(vec_add(data.new_pos, vec_mul(vec_norm(data.new_vel), vector(8,8))), vector(1/8,1/8))
+	
 	if (fget(mget(p.x, p.y), 0)) then
 		local col = collider(flr(p.x)*8+4, flr(p.y)*8+4, 0, 8, 8, false, nil, true)
 		data = rb_col_response(rb, col, data)
@@ -485,7 +525,7 @@ function rb_update(rb)
 
 	if (fget(mget(p.x,p.y), 2)) then
 		if (vec_len(data.new_vel)>50) then
-			if (rb.rot>0.5) new_rot -= 0.001*vec_len(data.new_vel) else new_rot += 0.001*vec_len(data.new_vel)
+			if (rb.rot>0.5) new_rot -= 0.02 else new_rot += 0.02
 			if(rb.load) then rb.load.hp -= rb.load.dmg_drift/3 blood(rb.pos,true) end
 		end
 	end
