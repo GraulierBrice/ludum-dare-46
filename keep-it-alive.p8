@@ -40,8 +40,8 @@ function _reset_globals()
 		{
 			spawns={
 				{{pos=vec_add(vec_mul(vector(93,16), vector(8,8)), vector(4,4)), rot=0.5}},
-				{{pos=vec_add(vec_mul(vector(12,6), vector(8,8)), vector(4,4)), rot=0},
-				{pos=vec_add(vec_mul(vector(12,8), vector(8,8)), vector(4,4)), rot=0.5}}},
+				{{pos=vec_add(vec_mul(vector(92,16), vector(8,8)), vector(4,4)), rot=0},
+				{pos=vec_add(vec_mul(vector(94,16), vector(8,8)), vector(4,4)), rot=0.5}}},
 			corners={upper_left=vector(6,0), bottom_right=vector(39,21)}
 			
 		},
@@ -75,7 +75,7 @@ function _draw()
 	else
 		menu_draw()
 	end
-	debug()
+	--debug()
 end
 
 -->8
@@ -317,6 +317,8 @@ end
 
 function draw_screen(player, cam_offset, ui_offset)
 	cam = vec_add(cars[player].pos, cam_offset)
+	cam.x=min(112*8,max(cam.x,64*8))
+	cam.y=min(16*8-(player-2)*8*8*(#cars-1),max(cam.y,0-8*8*(player-1)))
 	camera(cam.x, cam.y)
 	rectfill(cam.x, cam.y, cam.x+128, cam.y+128, 0)
 
@@ -389,7 +391,7 @@ menus = {
 		opts={"one-player","two-player coop","two-play versus","credits"},
 		run={
 			function() game_start(1, 2, nil) end,
-			function() game_start(2, 1, nil) end,
+			function() game_start(2, 2, nil) end,
 			function() game_start(2, 1, nil) end,
 			change_menu(2)},
 		--run={function() game.play=true end,nil,nil,},
@@ -532,6 +534,22 @@ function rb_update(rb)
 		end
 	end
 
+	if (data.new_pos.x>=128*8) and data.new_vel.x>0 then
+		local col = collider(128*8, data.new_pos.y, 0, 8, 100, false, nil, true)
+		data = rb_col_response(rb, col, data)
+	elseif (data.new_pos.x<=64*8) and data.new_vel.x<0 then
+		local col = collider(64*8, data.new_pos.y, 0, 8, 100, false, nil, true)
+		data = rb_col_response(rb, col, data)
+	end
+
+
+	if data.new_pos.y>=32*8 and data.new_vel.y>0 then
+		local col = collider(data.new_pos.x, 32*8, 0, 100, 8, false, nil, true)
+		data = rb_col_response(rb, col, data)
+	elseif data.new_pos.y<=0 and data.new_vel.y<0 then
+		local col = collider(data.new_pos.x, 0, 0, 100, 8, false, nil, true)
+		data = rb_col_response(rb, col, data)
+	end
 
 	rb.acc = vector(0,0)
 	rb.vel = data.new_vel
