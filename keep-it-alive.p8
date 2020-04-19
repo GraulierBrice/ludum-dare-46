@@ -126,6 +126,9 @@ function game_update()
 	for patient in all(patients) do
 		update_patient(patient)
 	end
+	for morphine in all(morphines)do
+		update_morphine(morphine)
+	end
 	physics_update()
 end
 
@@ -225,7 +228,6 @@ end
 function morphine(x,y)
 	local m = collider(x,y,0,8,8,true, morphine_hit)
 	m.full=true
-	m.timer=0
 	add(morphines,m)
 	return m
 end
@@ -235,14 +237,14 @@ function morphine_hit(morphine, other, rel_vel)
 		if (other.load and morphine.full) then
 			other.load.hp += 10
 			morphine.full = false
+			morphine.time = time()
 		end
 	end
 end
 
 function update_morphine(morphine)
 	if not morphine.full then
-		morphine.timer += 1
-		if (morphine.timer > 300) morphine.full = true
+		if (time() - morphine.time>=10) morphine.full = true
 	end
 end
 
