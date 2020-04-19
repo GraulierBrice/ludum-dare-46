@@ -97,8 +97,19 @@ function game_start(nb_players, map, mode)
 	for i=1, nb_players do
 		local spawn = maps[map].spawns[nb_players][i]
 		add(cars, rigidbody(spawn.pos.x, spawn.pos.y, spawn.rot, 7, 7, car_hit))
+		cars[i].score = 0
 	end
-	default_patient(27*8,84)
+	if (mode==2) cars[2].score=nil
+	default_patient(24*8,84,12)
+	default_patient(25*8,84,10)
+	default_patient(26*8,84,14)
+	default_patient(27*8,84,8)
+	default_patient(28*8,84,11)
+	default_patient(29*8,84,1)
+	default_patient(30*8,84,4)
+	--default_patient(27*8,84)
+
+
 	--add(patients, collider(21*8,10,0,8,8,true))
 	add(dropzones, collider(12*8+4,7*8+4,0,8,24,true, dropzone_hit))
 end
@@ -150,11 +161,17 @@ end
 
 -- patients section
 
-function default_patient(x, y)
-	return patient(x, y, 10, 1, 2, 0.75, 2, 40)
+function default_patient(x, y, col)
+	return  (col == 10) and patient(x,y,10,0,2,0,0,100,10)
+	or ((col == 14) and patient(x,y,10,0,0,0.75,0,100,14)
+	or ((col == 11) and patient(x,y,10,0,2,0.75,0,100,11)
+	or ((col == 8) and patient(x,y,10,0,0,0.75,2,40,8)
+	or ((col == 1) and patient(x,y,10,0,2,0,2,40,1)
+	or ((col == 4) and patient(x,y,10,0,2,0.75,2,40,4)
+	or patient(x,y,10,0,0,0,2,30,12))))))
 end
 
-function patient(x, y, hp, dmg_unloaded, dmg_drift, dmg_loaded, hit_dmg, hit_dmg_threshold)
+function patient(x, y, hp, dmg_unloaded, dmg_drift, dmg_loaded, hit_dmg, hit_dmg_threshold,col)
 	local p = collider(x,y,0,8,8,true, patient_hit)
 	p.max_hp = hp
 	p.hp = hp
@@ -164,6 +181,7 @@ function patient(x, y, hp, dmg_unloaded, dmg_drift, dmg_loaded, hit_dmg, hit_dmg
 	p.dmg_loaded = dmg_loaded
 	p.hit_dmg = hit_dmg
 	p.hit_dmg_threshold = hit_dmg_threshold
+	p.col = col
 	add(patients, p)
 	return p
 end
@@ -193,8 +211,10 @@ function dropzone_hit(dropzone, other, rel_vel)
 	if (has(cars, other)) then
 		if (other.load and vec_len(rel_vel) < phy.max_vel_action) then
 			del(patients, other.load)
+			dropzone.col = other.load.col
 			other.load = nil
 			dropzone.patient = 0
+			if (other.score) other.score+=1 else cars[1].score+=1
 		end
 	end
 end
@@ -273,42 +293,41 @@ function draw_screen(player, cam_offset, ui_offset)
 	for dropzone in all(dropzones) do
 		if(dropzone.patient) then 
 			line(dropzone.pos.x+4,dropzone.pos.y+dropzone.patient/2,dropzone.pos.x+4,dropzone.pos.y-dropzone.patient/2,7)
-			sspr(24,0,9-dropzone.patient,8,dropzone.pos.x-4+dropzone.patient,dropzone.pos.y-4) 
+			pal(12,dropzone.col)
+			sspr(24,0,9-dropzone.patient,8,dropzone.pos.x-4+dropzone.patient,dropzone.pos.y-4)
+			pal(12,12)
 			dropzone.patient+=0.5
 			if (dropzone.patient>8) dropzone.patient=nil
 		end
 	end
-	for patient in all(patients) do
-		if (patient.car_id <= 0) then
-			local car_dists = {}
-			local bound_x = min(cam.x+126,max(cam.x-1,patient.pos.x))
-			local bound_y = {min(cam.y+128/#cars-2,max(cam.y-1,patient.pos.y)),min(cam.y+126,max(cam.y-1+65,patient.pos.y))}
-			for i=1,#cars do
-				add(car_dists, vector(abs(cars[i].pos.x-1-patient.pos.x),abs(cars[i].pos.y-1-patient.pos.y)))
-				if car_dists[i].x<=68 and car_dists[i].y <=68/#cars then
+
+
+	for i=1,#cars do
+		for patient in all(patients) do
+			if (patient.car_id <= 0) then
+				local car_dists = {}
+				local bound_x = min(cam.x+126,max(cam.x-1,patient.pos.x))
+				local bound_y = {min(cam.y+128/#cars-2,max(cam.y-1,patient.pos.y)),min(cam.y+126,max(cam.y-1+65,patient.pos.y))}
+				car_dist=vector(abs(cars[i].pos.x-1-patient.pos.x),abs(cars[i].pos.y-1-patient.pos.y))
+				if car_dist.x<=68 and car_dist.y <=68/#cars then
+					pal(12,patient.col)
 					spr(1,patient.pos.x-4, patient.pos.y-4)
+					pal(12,12)
 				else
-					if car_dists[i].x>#cars*car_dists[i].y then
+					if car_dist.x>#cars*car_dist.y then
 						sspr(13,16,3,3,bound_x,bound_y[i],3,3)
 					else
 						sspr(13,21,3,3,bound_x,bound_y[i],3,3)
 					end
 				end
+			
+			else
+				print(patient.car_id, cam.x, cam.y, 11)
+				print(patient.hp.."/"..patient.max_hp, cam.x, cam.y+10, 8)
 			end
-		else
-			print(patient.car_id, cam.x, cam.y, 11)
-			print(patient.hp.."/"..patient.max_hp, cam.x, cam.y+10, 8)
 		end
-	end
-
-	if (player == 1) then
-		for i=#cars, 1, -1 do
-			draw_car(cars[i])
-		end
-	elseif (player == 2) then
-		for i=1, #cars do
-			draw_car(cars[i])
-		end
+		draw_car(cars[i])
+		if(cars[i].score) print("sCORE:"..cars[i].score, cam.x,cam.y+65*(i-1),9)
 	end
 end
 
@@ -322,9 +341,9 @@ menus = {
 	{
 		opts={"one-player","two-player coop","two-play versus","credits"},
 		run={
-			function() game_start(1, 1, nil) end,
-			function() game_start(2, 1, nil) end,
-			function() game_start(2, 1, nil) end,
+			function() game_start(1, 1) end,
+			function() game_start(2, 1, 2) end,
+			function() game_start(2, 1) end,
 			change_menu(2)},
 		--run={function() game.play=true end,nil,nil,},
 		l=72,
