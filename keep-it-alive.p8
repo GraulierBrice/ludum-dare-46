@@ -322,9 +322,9 @@ function draw_screen(player, cam_offset, ui_offset)
 					spr(1,patient.pos.x-4, patient.pos.y-4)
 				else
 					if car_dist.x>#cars*car_dist.y then
-						sspr(13,16,3,3,bound_x,bound_y[i],3,3)
+						sspr(45,0,3,3,bound_x,bound_y[i],3,3)
 					else
-						sspr(13,21,3,3,bound_x,bound_y[i],3,3)
+						sspr(45,5,3,3,bound_x,bound_y[i],3,3)
 					end
 				end
 				pal(12,12)
