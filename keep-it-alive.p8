@@ -115,6 +115,7 @@ function game_start(nb_players, map, mode)
 	game.play=true
 	cars={}
 	gum={}
+	morphines={}
 
 	n_gums=0
 	game.map_id=map
@@ -124,6 +125,11 @@ function game_start(nb_players, map, mode)
 		add(cars, rigidbody(spawn.pos.x, spawn.pos.y, spawn.rot, 7, 7, car_hit))
 		cars[i].score = 0
 	end
+
+	for m in all(maps[map].morphines) do
+		morphine(m.x, m.y)
+	end
+
 	if (mode==2) cars[2].score=nil
 	
 	time_to_spawn_patient=0
