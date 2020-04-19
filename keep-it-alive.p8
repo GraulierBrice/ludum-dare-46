@@ -83,6 +83,7 @@ end
 cars={}
 patients={}
 dropzones={}
+morphines={}
 gum={}
 function game_start(nb_players, map, mode)
 	--music(0)
@@ -105,6 +106,7 @@ function game_start(nb_players, map, mode)
 	default_patient(113*8,14*8,11)
 	default_patient(114*8,14*8,1)
 	default_patient(115*8,14*8,4)
+	morphine(115*8,16*8)
 	--default_patient(27*8,84)
 
 
@@ -219,6 +221,30 @@ function dropzone_hit(dropzone, other, rel_vel)
 	end
 end
 
+function morphine(x,y)
+	local m = collider(x,y,0,8,8,true, morphine_hit)
+	m.full=true
+	m.timer=0
+	add(morphines,m)
+	return m
+end
+
+function morphine_hit(morphine, other, rel_vel)
+	if (has(cars, other)) then
+		if (other.load and morphine.full) then
+			other.load.hp += 10
+			morphine.full = false
+		end
+	end
+end
+
+function update_morphine(morphine)
+	if not morphine.full then
+		morphine.timer += 1
+		if (morphine.timer > 300) morphine.full = true
+	end
+end
+
 -- car section
 function car_drifting(car)
 	local loc_vel = tr_vector(car, car.vel)
@@ -302,13 +328,22 @@ function draw_screen(player, cam_offset, ui_offset)
 	for dropzone in all(dropzones) do
 		if(dropzone.patient) then 
 			pal(12,dropzone.col)
-			sspr(24,dropzone.patient,8,9-dropzone.patient,dropzone.pos.x-4,dropzone.pos.y-4-dropzone.patient)
+			sspr(24,dropzone.patient,8,8-dropzone.patient,dropzone.pos.x-4,dropzone.pos.y-4-dropzone.patient)
 			pal(12,12)
 			dropzone.patient+=0.5
 			if (dropzone.patient>8) dropzone.patient=nil
 		end
 	end
 
+	for morphine in all(morphines) do
+		pal(11,0)
+		pal(7,0)
+		spr(2,morphine.pos.x+1,morphine.pos.y+1)
+		pal()
+		if (not morphine.full) pal(11,6)
+		spr(2,morphine.pos.x,morphine.pos.y-time()%2)
+		pal(11,11)
+	end
 
 	for i=1,#cars do
 		for patient in all(patients) do
