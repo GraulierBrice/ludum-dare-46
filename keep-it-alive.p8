@@ -85,6 +85,7 @@ patients={}
 dropzones={}
 gum={}
 function game_start(nb_players, map, mode)
+	--music(0)
 	game.play=true
 	cars={}
 	gum={}
@@ -198,8 +199,10 @@ function update_patient(patient)
 	if (patient.car_id > 0) then
 		if (car_drifting(cars[patient.car_id])) then
 			patient.hp -= phy.dt * patient.dmg_drift
+			if(patient.dmg_drift>0)blood(patient.pos,true)
 		else
 			patient.hp -= phy.dt * patient.dmg_loaded
+			if(patient.dmg_loaded>0)blood(patient.pos,true)
 		end
 	end
 end
@@ -229,6 +232,8 @@ function car_hit(car, other, rel_vel)
 		local speed = vec_len(rel_vel)
 		if (speed >= car.load.hit_dmg_threshold) then
 			car.load.hp -= car.load.hit_dmg
+			blood(car.pos,true)
+			blood(car.pos,true)
 		end
 	end
 end
@@ -313,10 +318,9 @@ function draw_screen(player, cam_offset, ui_offset)
 				local bound_x = min(cam.x+126,max(cam.x-1,patient.pos.x))
 				local bound_y = {min(cam.y+128/#cars-2,max(cam.y-1,patient.pos.y)),min(cam.y+126,max(cam.y-1+65,patient.pos.y))}
 				car_dist=vector(abs(cars[i].pos.x-1-patient.pos.x),abs(cars[i].pos.y-1-patient.pos.y))
+				pal(12,patient.col)
 				if car_dist.x<=68 and car_dist.y <=68/#cars then
-					pal(12,patient.col)
 					spr(1,patient.pos.x-4, patient.pos.y-4)
-					pal(12,12)
 				else
 					if car_dist.x>#cars*car_dist.y then
 						sspr(13,16,3,3,bound_x,bound_y[i],3,3)
@@ -324,12 +328,13 @@ function draw_screen(player, cam_offset, ui_offset)
 						sspr(13,21,3,3,bound_x,bound_y[i],3,3)
 					end
 				end
-			
+				pal(12,12)
 			else
 				print(patient.car_id, cam.x, cam.y, 11)
 				print(patient.hp.."/"..patient.max_hp, cam.x, cam.y+10, 8)
 			end
 		end
+		draw_particles()
 		draw_car(cars[i])
 		if(cars[i].score) print("sCORE:"..cars[i].score, cam.x,cam.y+65*(i-1),9)
 	end
@@ -354,7 +359,7 @@ menus = {
 		w=45
 	},
 	{ 	
-		opts={"game designers  ","uLQUIRO","bRICE","programmers     ","uLQUIRO","bRICE","sound designer  ","pUDDY"},
+		opts={"game designers  ","uLQUIRO","bRICE","programmers     ","uLQUIRO","bRICE","sound designer  ","pUDDY/pRODUCER-SAN"},
 		run={},
 		l=72,
 		w=85
@@ -482,7 +487,7 @@ function rb_update(rb)
 	if (fget(mget(p.x,p.y), 2)) then
 		if (vec_len(data.new_vel)>30) then
 			if (rb.rot>0.5) new_rot -= 0.001*vec_len(data.new_vel) else new_rot += 0.001*vec_len(data.new_vel)
-			if(rb.load) rb.load.hp -= rb.load.dmg_drift/3
+			if(rb.load) then rb.load.hp -= rb.load.dmg_drift/3 blood(rb.pos,true) end
 		end
 	end
 
@@ -740,6 +745,69 @@ function colour_to_score(c)
 	or ((c == 1) and 3
 	or ((c == 4) and 6
 	or 1)))))
+end
+
+particles = {}
+nparts = 0
+--pcl = {}
+
+function create_raw_particles(x, y, lt, np, draw)
+	local pcl={
+		x=x,
+		y=y,
+		lifetime=lt,
+		draw=draw,
+		timer=0.0,
+		npart=np
+	}
+	add(particles, pcl)
+	nparts += np
+	return pcl
+end
+
+function blood(pos, simulated)
+	local pcl=create_raw_particles(pos.x, pos.y, .2, 2, draw_blood)
+	pcl.simulated=simulated
+	init_blood(pcl)
+end
+
+function init_blood(pcl)
+	pcl.pcs = {}
+	for i=1,pcl.npart,1 do
+		local a=rnd(1)
+		local pc = {
+			x=pcl.x, y=pcl.y,
+			s={x=cos(a)*rnd(2),	y=-abs(sin(a))-2-rnd(2)},
+			lt=pcl.lifetime*(rnd(0.4)+1)
+		}
+		add(pcl.pcs, pc)
+	end
+end
+
+function draw_blood(pcl)
+	for pc in all(pcl.pcs) do
+		local p = (pc.lt / pcl.lifetime)
+		circfill(pc.x, pc.y,p,8)
+		pc.s.y += 1
+		pc.x+=pc.s.x
+		pc.y+=pc.s.y
+		pc.lt-=1/30
+		if (pc.lt<=0) del(pcl.pcs, pc)
+	end
+	if #pcl.pcs==0 then
+		pcl.timer=pcl.lifetime+1
+	end
+end
+
+function draw_particles()
+	for pcl in all(particles) do
+		if (pcl.timer >= pcl.lifetime and pcl.lifetime > 0) then
+			nparts -= pcl.npart
+			del(particles, pcl)
+		else
+			pcl.draw(pcl)
+		end
+	end
 end
 
 __gfx__
