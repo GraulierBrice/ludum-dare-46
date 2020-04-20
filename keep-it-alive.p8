@@ -17,7 +17,8 @@ function _reset_globals()
 		menu_id=1,
 		menu_select=1,
 		map_id=1,
-		start=0
+		start=0,
+		nb_players=1
 	}
 
 	phy={
@@ -31,13 +32,6 @@ function _reset_globals()
 	}
 
 	maps={
-		{
-			spawns={
-				{{pos=vec_add(vec_mul(vector(12,7), vector(8,8)), vector(4,4)), rot=-0.25}},
-				{{pos=vec_add(vec_mul(vector(12,6), vector(8,8)), vector(4,4)), rot=0},
-				{pos=vec_add(vec_mul(vector(12,8), vector(8,8)), vector(4,4)), rot=0.5}}},
-			
-		},
 		{
 			spawns={
 				{{pos=vec_add(vec_mul(vector(93,21), vector(8,8)), vector(4,4)), rot=0}},
@@ -68,7 +62,6 @@ function _reset_globals()
 				vec_mul(vector(117,26), vector(8,8))
 			},
 			bounds={min=vector(64*8,0), max=vector(128*8,32*8)}
-
 		}
 	}
 
@@ -118,13 +111,15 @@ morphines={}
 time_to_spawn_patient=0
 
 function game_start(nb_players, map, mode)
-	--music(0)
 	game.play=true
 	cars={}
 	gum={}
 	morphines={}
+	patients={}
+	particles = {}
 	game.start=time()+180
 	game.mode=mode
+	game.score = 0
 
 	n_gums=0
 	game.map_id=map
@@ -132,28 +127,26 @@ function game_start(nb_players, map, mode)
 	for i=1, nb_players do
 		local spawn = maps[map].spawns[nb_players][i]
 		add(cars, rigidbody(spawn.pos.x, spawn.pos.y, spawn.rot, 7, 7, car_hit))
-		cars[i].score = 0
 	end
 
 	for m in all(maps[map].morphines) do
 		morphine(m.x, m.y)
 	end
 
-	if (mode==2) cars[2].score=nil
-
-	add(dropzones, collider(93*8+4,16*8+4,0,8,24,true, dropzone_hit))
+	add(dropzones, collider(93*8+4,16*8+4,0,24,24,true, dropzone_hit))
 end
 
 function game_end()
 	pal()
+	menus.crosses={}
 	game.play=false
-	game.menu_id=4
-	menus[4].opts={"congratulations!","you scored "..cars[1].score,"TRY AGAIN","BACK TO MENU"}
-	menus[4].w=45
-	menus[4].l=72
-
-	add(menus[4].run, function() game_start(#cars,2,game.mode) end)
-	add(menus[4].run,change_menu(1))
+	if (game.mode==1) then
+		menus[4].opts[2]="you scored "..game.score
+		change_menu(4)()
+	elseif (game.mode==2) then
+		menus[5].opts[2]="you scored "..game.score
+		change_menu(5)()	
+	end
 end
 
 function game_update()
@@ -296,8 +289,10 @@ function update_patient(patient)
 	else
 		patient.hp -= patient.dmg_unloaded
 		if(patient.hp<0)then
-			del(patients,patient)
-			patient=nil
+			if (game.mode==1) then
+				del(patients,patient)
+				del(colliders, patient)
+			else game_end() end
 		end
 	end 
 end
@@ -306,7 +301,7 @@ function dropzone_hit(dropzone, other, rel_vel)
 	if (has(cars, other)) then
 		if (other.load and vec_len(rel_vel) < phy.max_vel_action) then
 			del(patients, other.load)
-			if (other.score) other.score+=colour_to_score(other.load.col) else cars[1].score+=colour_to_score(other.load.col)
+			if (game.score) game.score+=colour_to_score(other.load.col) else game.score+=colour_to_score(other.load.col)
 			dropzone.col = other.load.col
 			other.load = nil
 			dropzone.patient = 0
@@ -379,7 +374,11 @@ function update_car(car, player)
 	if car.load and car.load.hp <= 0 then
 		del(patients,car.load)
 		car.load = nil
-		death_message_lt = time()+2
+		if (game.mode==1) then
+			death_message_lt = time()+2
+		else
+			game_end()
+		end
 	end
 end
 
@@ -470,16 +469,15 @@ function draw_screen(player, cam_offset, ui_offset)
 				end
 				patient.show=false
 				pal(12,12)
-			else
-				print(patient.car_id, cam.x, cam.y, 11)
-				print(patient.hp.."/"..patient.max_hp, cam.x, cam.y+10, 8)
 			end
 		end
 	for i=1,#cars do
 		draw_particles()
 		draw_car(cars[i])
-		if(death_message_lt>time()) draw_menu_box(cam.x+32,cam.y+16,72,12,{"patient has died"})
-		if(cars[i].score) print("sCORE:"..cars[i].score, cam.x,cam.y+65*(i-1),9)
+		if(death_message_lt>time()) then
+			draw_menu_box(cam.x+32,cam.y+16,72,12,{"patient has died"})
+		end
+		if(game.score) print("sCORE:"..game.score, cam.x,cam.y+65*(i-1),9)
 	end
 	for p in all(patients) do
 		p.show=false
@@ -495,21 +493,23 @@ end
 
 menus = {
 	{
-		opts={"one-player","two-player coop","two-play versus", "how to play","credits"},
+		opts={"save them fast", "save them all", "add player 2", "how to play","credits"},
 		run={
-			function() game_start(1, 2, 1) end,
-			function() game_start(2, 2, 1) end,
-			function() game_start(2, 1, nil) end,
+			function() game_start(game.nb_players, 1, 1) end,
+			function() game_start(game.nb_players, 1, 2) end,
+			function() 
+				if (game.nb_players==1) then game.nb_players=2 menus[1].opts[3]="add player 2"
+				else  game.nb_players=1 menus[1].opts[3]="remove player 2" end end,
 			change_menu(3),
 			change_menu(2)},
 		--run={function() game.play=true end,nil,nil,},
-		l=72,
+		l=82,
 		w=55
 	},
 	{ 	
-		opts={"game designers  ","uLQUIRO","bRICE","programmers     ","uLQUIRO","bRICE","sound designer  ","pUDDY/pRODUCER-SAN"},
+		opts={" game designers  ","tHEO fAFET","bRICE"," programmers     ","tHEO fAFET","bRICE"," sound designer  "," pUDDY/pRODUCER-SAN"},
 		run={},
-		l=72,
+		l=78,
 		w=85
 	},
 	{
@@ -519,10 +519,16 @@ menus = {
 		w=95
 	},	
 	{
-		opts={"congratulations!"},
-		run={nil,nil},
-		l=0,
-		w=0
+		opts={"congratulations!", "score placeholder", "try again", "back to menu"},
+		run={nil,nil,function()game_start(game.nb_players, game.map_id, game.mode) end, change_menu(1)},
+		l=16*4+4,
+		w=45
+	},	
+	{
+		opts={" oh no someone has died!", "score placeholder", "try again", "back to menu"},
+		run={nil,nil,function()game_start(game.nb_players, game.map_id, game.mode) end, change_menu(1)},
+		l=23*4+4,
+		w=45
 	},
 
 	display = function(menu)
@@ -561,6 +567,10 @@ function menu_draw()
 	for i=1,#menus.crosses do
 		local rb=menus.crosses[i]
 		spr(16, cam.x+rb.pos.x, cam.y+rb.pos.y)
+	end
+	if (game.menu_id==1) then
+		if (game.nb_players==1) then menus[1].opts[3]="add player 2"
+		else menus[1].opts[3]="remove player 2" end
 	end
 	menus.display(menus[game.menu_id])
 	spr(108,cam.x+96,cam.y+96,4,2)
