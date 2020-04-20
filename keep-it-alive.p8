@@ -243,12 +243,12 @@ end
 
 function default_patient(x, y, col)
 	local unload_dmg = 0.2/30
-	return  (col == 10) and patient(x,y,10,unload_dmg,1,0,0,100,10)
-	or ((col == 14) and patient(x,y,10,unload_dmg,0,0.5,0,100,14)
-	or ((col == 11) and patient(x,y,10,unload_dmg,1,0.5,0,100,11)
-	or ((col == 8) and patient(x,y,10,unload_dmg,0,0.5,2,40,8)
+	return  (col == 10) and patient(x,y,10,unload_dmg,1.3,0,0,100,10)
+	or ((col == 14) and patient(x,y,10,unload_dmg,0,0.75,0,100,14)
+	or ((col == 11) and patient(x,y,10,unload_dmg,1.3,0.75,0,100,11)
+	or ((col == 8) and patient(x,y,10,unload_dmg,0,0.75,2,40,8)
 	or ((col == 1) and patient(x,y,10,unload_dmg,1,0,2,40,1)
-	or ((col == 4) and patient(x,y,10,unload_dmg,1,0.5,2,40,4)
+	or ((col == 4) and patient(x,y,10,unload_dmg,1,0.5,1.5,40,4)
 	or patient(x,y,10,0,0,0,2,30,12))))))
 end
 
@@ -712,10 +712,11 @@ function rb_update(rb)
 	end
 
 	if (fget(mget(p.x,p.y), 2)) then
-		if (vec_len(data.new_vel)>50) then
-			if (rb.rot>0.5) new_rot -= 0.02 else new_rot += 0.02
+		phy.friction=1.2
+		if (vec_len(data.new_vel)>45) then
 			if(rb.load) then rb.load.hp -= rb.load.dmg_drift/3 blood(rb.pos,true) end
 		end
+	else phy.friction=1.5
 	end
 
 	if (data.new_pos.x>=phy.bounds.max.x-4) and data.new_vel.x>0 then
