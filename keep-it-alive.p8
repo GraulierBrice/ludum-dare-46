@@ -115,7 +115,7 @@ gum={}
 morphines={}
 time_to_spawn_patient=0
 function game_start(nb_players, map, mode)
-	music(0)
+	--music(0)
 	game.play=true
 	cars={}
 	gum={}
@@ -137,12 +137,8 @@ function game_start(nb_players, map, mode)
 	end
 
 	if (mode==2) cars[2].score=nil
-	time_to_spawn_patient=10
 
-	--add(patients, collider(21*8,10,0,8,8,true))
 	add(dropzones, collider(93*8+4,16*8+4,0,8,24,true, dropzone_hit))
-	spawn_patient()
-	spawn_patient()
 end
 
 function game_update()
@@ -159,10 +155,9 @@ function game_update()
 	for morphine in all(morphines)do
 		update_morphine(morphine)
 	end
-	if (time_to_spawn_patient <= 0) then
+	if (time() > time_to_spawn_patient) then
 		spawn_patient()
-	else
-		time_to_spawn_patient -= phy.dt
+		time_to_spawn_patient = time() + maps[game.map_id].delay_between_patients
 	end
 
 	physics_update()
@@ -213,7 +208,6 @@ function spawn_patient()
 				end
 			end
 			if (spwn != nil) then
-				time_to_spawn_patient = maps[game.map_id].delay_between_patients
 				default_patient(spwn.x, spwn.y, rate[1])
 				break
 			end
@@ -899,7 +893,7 @@ function randomPermutation(n)
 		add(availables, i)
 	end
 	for i=1, n do
-		local j=(rnd()*1000)%#availables
+		local j=flr((rnd()*1000)%#availables)
 		local v=availables[j+1]
 		del(availables, v)
 		add(permutation, v)
