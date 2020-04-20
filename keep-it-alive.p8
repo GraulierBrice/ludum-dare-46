@@ -26,7 +26,8 @@ function _reset_globals()
         bounce=0.5,
         grip=0.33,
         accel=150,
-        max_vel_action=25
+        max_vel_action=25,
+		bounds={min=vector(0,0), max=vector(128,128)}
 	}
 
 	maps={
@@ -35,7 +36,6 @@ function _reset_globals()
 				{{pos=vec_add(vec_mul(vector(12,7), vector(8,8)), vector(4,4)), rot=-0.25}},
 				{{pos=vec_add(vec_mul(vector(12,6), vector(8,8)), vector(4,4)), rot=0},
 				{pos=vec_add(vec_mul(vector(12,8), vector(8,8)), vector(4,4)), rot=0.5}}},
-			corners={upper_left=vector(6,0), bottom_right=vector(39,21)}
 			
 		},
 		{
@@ -67,7 +67,7 @@ function _reset_globals()
 				vec_mul(vector(69,20), vector(8,8)),
 				vec_mul(vector(117,26), vector(8,8))
 			},
-			corners={upper_left=vector(6,0), bottom_right=vector(39,21)}
+			bounds={min=vector(64*8,0), max=vector(128*8,32*8)}
 
 		}
 	}
@@ -115,6 +115,7 @@ dropzones={}
 gum={}
 morphines={}
 time_to_spawn_patient=0
+
 function game_start(nb_players, map, mode)
 	--music(0)
 	game.play=true
@@ -160,6 +161,7 @@ function game_update()
 		spawn_patient()
 		time_to_spawn_patient = time() + maps[game.map_id].delay_between_patients
 	end
+	phy.bounds = maps[game.map_id].bounds
 
 	physics_update()
 
@@ -182,8 +184,6 @@ function game_draw()
 		local right = vec_add(cam, vector(128, 64))
 		rectfill(left.x, left.y, right.x, right.y, 0)
 	end
-
-
 end
 
 function spawn_patient()
@@ -489,14 +489,38 @@ menus = {
 	}
 
 function menu_update()
+	if (menus.crosses==nil) then
+		menus.crosses={}
+		physics_start()
+		for i = 1, 8 do
+			local rb = rigidbody(cam.x+rnd()*124, cam.y+rnd()*124, 0, 8, 8)
+			add(menus.crosses, rb)
+			local r = rnd()
+			rb.vel = vector(cos(r)*20, sin(r)*20)
+		end
+	end
+
+	for i=1,#menus.crosses do
+		local rb=menus.crosses[i]
+		rb.vel = vec_mul(vec_norm(rb.vel), vector(20,20))
+	end
+
 	if (btnp(2)) game.menu_select = max(game.menu_select-1,1)
 	if (btnp(3)) game.menu_select = min(game.menu_select+1,#menus[game.menu_id].opts)
 	if (btnp(4) or btnp(5)) then if (menus[game.menu_id].run[game.menu_select]) then menus[game.menu_id].run[game.menu_select]() end end
+
+	phy.bounds = {min=cam, max=vec_add(cam, vector(127,127))}
+
+	physics_update()
 end
 
 function menu_draw()
 	camera(cam.x,cam.y)
-	map(0,0,0,0,128,128)
+	rectfill(cam.x, cam.y, cam.x+128, cam.y+128, 7)
+	for i=1,#menus.crosses do
+		local rb=menus.crosses[i]
+		spr(16, cam.x+rb.pos.x, cam.y+rb.pos.y)
+	end
 	menus.display(menus[game.menu_id])
 	spr(108,cam.x+96,cam.y+96,4,2)
 	spr(108,cam.x+96,cam.y+112,4,2,true,true)
@@ -527,10 +551,10 @@ function draw_menu_box(x,y,l,w, opts)
 	spr(7,x+l/2,y-7)
 	pal()
 	rectfill(x,y,x+l,y+w,5)
-	line(x,y+w,x+l,y+w,0)
-	line(x+l,y,x+l,y+w,0)
-	line(x,y,x+l,y,7)
-	line(x,y,x,y+w,7)
+	line(x,y+w,x+l,y+w,1)
+	line(x+l,y,x+l,y+w,1)
+	line(x,y,x+l,y,6)
+	line(x,y,x,y+w,6)
 	foreach(opts, function(s) selection(off_set) print(s,x+l/2-#s*2,y+off_set*10-5) off_set+=1 end)
 end
 
@@ -628,20 +652,20 @@ function rb_update(rb)
 		end
 	end
 
-	if (data.new_pos.x>=128*8) and data.new_vel.x>0 then
-		local col = collider(128*8, data.new_pos.y, 0, 8, 100, false, nil, true)
+	if (data.new_pos.x>=phy.bounds.max.x-4) and data.new_vel.x>0 then
+		local col = collider(phy.bounds.max.x-4, data.new_pos.y, 0, 8, 100, false, nil, true)
 		data = rb_col_response(rb, col, data)
-	elseif (data.new_pos.x<=64*8) and data.new_vel.x<0 then
-		local col = collider(64*8, data.new_pos.y, 0, 8, 100, false, nil, true)
+	elseif (data.new_pos.x<=phy.bounds.min.x+4) and data.new_vel.x<0 then
+		local col = collider(phy.bounds.min.x+4, data.new_pos.y, 0, 8, 100, false, nil, true)
 		data = rb_col_response(rb, col, data)
 	end
 
 
-	if data.new_pos.y>=32*8 and data.new_vel.y>0 then
-		local col = collider(data.new_pos.x, 32*8, 0, 100, 8, false, nil, true)
+	if (data.new_pos.y>=phy.bounds.max.y-4) and data.new_vel.y>0 then
+		local col = collider(data.new_pos.x, phy.bounds.max.y-4, 0, 100, 8, false, nil, true)
 		data = rb_col_response(rb, col, data)
-	elseif data.new_pos.y<=0 and data.new_vel.y<0 then
-		local col = collider(data.new_pos.x, 0, 0, 100, 8, false, nil, true)
+	elseif (data.new_pos.y<=phy.bounds.min.y+4) and data.new_vel.y<0 then
+		local col = collider(data.new_pos.x, phy.bounds.min.y-4, 0, 100, 8, false, nil, true)
 		data = rb_col_response(rb, col, data)
 	end
 
