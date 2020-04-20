@@ -123,7 +123,7 @@ function game_start(nb_players, map, mode)
 	cars={}
 	gum={}
 	morphines={}
-	game.start=time()
+	game.start=time()+180
 	game.mode=mode
 
 	n_gums=0
@@ -142,6 +142,18 @@ function game_start(nb_players, map, mode)
 	if (mode==2) cars[2].score=nil
 
 	add(dropzones, collider(93*8+4,16*8+4,0,8,24,true, dropzone_hit))
+end
+
+function game_end()
+	pal()
+	game.play=false
+	game.menu_id=4
+	menus[4].opts={"congratulations!","you scored "..cars[1].score,"TRY AGAIN","BACK TO MENU"}
+	menus[4].w=45
+	menus[4].l=72
+
+	add(menus[4].run, function() game_start(#cars,2,game.mode) end)
+	add(menus[4].run,change_menu(1))
 end
 
 function game_update()
@@ -167,7 +179,7 @@ function game_update()
 	physics_update()
 
 	if(game.mode == 1) then 
-		if (game.start+180<time()) _reset_globals() 
+		if (game.start<time()) game_end()
 	end
 
 end
@@ -421,7 +433,7 @@ function draw_screen(player, cam_offset, ui_offset)
 		pal(11,11)
 	end
 
-	if(game.mode==1) print("time "..flr(180-time()+game.start),cam.x+64-#"time"*4,cam.y,9)
+	if(game.mode==1) print("time "..flr(game.start-time()),cam.x+64-#"time"*4,cam.y,9)
 
 	for i=1,#cars do
 		for patient in all(patients) do
@@ -483,8 +495,14 @@ menus = {
 		run={},
 		l=126,
 		w=95
-
+	},	
+	{
+		opts={"congratulations!"},
+		run={nil,nil},
+		l=0,
+		w=0
 	},
+
 	display = function(menu)
 		draw_menu_box(cam.x+64-menu.l/2,cam.y+64-menu.w/2,menu.l,menu.w,menu.opts) end
 	}
