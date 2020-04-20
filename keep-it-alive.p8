@@ -163,6 +163,11 @@ function game_update()
 	end
 
 	physics_update()
+
+	if(game.mode == 1) then 
+		if (game.start+180<time()) _reset_globals() 
+	end
+
 end
 
 function game_draw()
@@ -179,7 +184,6 @@ function game_draw()
 		rectfill(left.x, left.y, right.x, right.y, 0)
 	end
 
-	if(game.mode==1) print("time",cam.x+60,cam.y)
 
 end
 
@@ -417,6 +421,7 @@ function draw_screen(player, cam_offset, ui_offset)
 		pal(11,11)
 	end
 
+	if(game.mode==1) print("time "..flr(180-time()+game.start),cam.x+64-#"time"*4,cam.y,9)
 
 	for i=1,#cars do
 		for patient in all(patients) do
@@ -457,8 +462,8 @@ menus = {
 	{
 		opts={"one-player","two-player coop","two-play versus","credits"},
 		run={
-			function() game_start(1, 2, nil) end,
-			function() game_start(2, 2, nil) end,
+			function() game_start(1, 2, 1) end,
+			function() game_start(2, 2, 1) end,
 			function() game_start(2, 1, nil) end,
 			change_menu(2)},
 		--run={function() game.play=true end,nil,nil,},
