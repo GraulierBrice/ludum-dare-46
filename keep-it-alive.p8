@@ -118,7 +118,7 @@ morphines={}
 time_to_spawn_patient=0
 
 function game_start(nb_players, map, mode)
-	--music(0)
+	music(0)
 	game.play=true
 	cars={}
 	gum={}
@@ -446,7 +446,7 @@ function draw_screen(player, cam_offset, ui_offset)
 		for patient in all(patients) do
 			if (patient.car_id <= 0) then
 				local bound_x = min(cam.x+125,max(cam.x-2,patient.pos.x))
-				local bound_y = {min(cam.y+128/#cars-4,max(cam.y-2,patient.pos.y)),min(cam.y+126,max(cam.y-62,patient.pos.y))}
+				local bound_y = {min(cam.y+128/#cars-3-(#cars-1) ,max(cam.y-2,patient.pos.y)),min(cam.y+125,max(cam.y+63,patient.pos.y))}
 				for i=1,#cars do
 					local car_dist=vec_sub(cars[i].pos,patient.pos)
 					if (abs(car_dist.x)<=68 and abs(car_dist.y) <=68/#cars) patient.show=true
