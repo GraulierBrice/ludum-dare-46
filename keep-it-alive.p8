@@ -518,10 +518,10 @@ menus = {
 		w=85
 	},
 	{
-		opts={"save the patients!","be careful of their symptoms:","  broken bones -> avoid walls"," vommiting    -> drive safe","  bleeding out -> quickly go!","get them to the drop zone","use morphine to keep alive","player one uses arrow keys ","player two uses esdf  "},
+		opts={"save the patients!","be careful of their symptoms:","  broken bones -> avoid walls"," vommiting    -> drive safe","  bleeding out -> quickly go!","get them to the drop zone","use morphine to keep alive","slow down to pick-up/drop-off","player 1 uses arrow keys     ","player 2 uses esdf           "},
 		run={},
 		l=126,
-		w=95
+		w=105
 	},	
 	{
 		opts={"congratulations!", "score placeholder", "try again", "back to menu"},
@@ -541,7 +541,7 @@ menus = {
 	}
 
 function menu_update()
-	if (menus.crosses==nil) then
+	if not menus.crosses then
 		menus.crosses={}
 		physics_start()
 		for i = 1, 8 do
@@ -581,16 +581,16 @@ function menu_draw()
 	spr(108,cam.x+96,cam.y+96,4,2)
 	spr(108,cam.x+96,cam.y+112,4,2,true,true)
 	if(game.menu_id==3)then
-		spr(1,cam.x+3,cam.y+39)
+		spr(1,cam.x+3,cam.y+35)
 		pal(12,10)
-		spr(1,cam.x+3,cam.y+49)
+		spr(1,cam.x+3,cam.y+45)
 		pal(12,14)
-		spr(1,cam.x+3,cam.y+59)
+		spr(1,cam.x+3,cam.y+55)
 		pal(12,12)
-		spr(2,cam.x+3,cam.y+80)
-		spr(2,cam.x+117,cam.y+80)
-		spr(19,cam.x+4,cam.y+70)
-		spr(19,cam.x+116,cam.y+70)
+		spr(2,cam.x+3,cam.y+74)
+		spr(2,cam.x+117,cam.y+74)
+		spr(19,cam.x+4,cam.y+64)
+		spr(19,cam.x+116,cam.y+64)
 	end
 end
 
