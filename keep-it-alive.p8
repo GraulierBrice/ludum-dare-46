@@ -481,7 +481,7 @@ menus = {
 		w=85
 	},
 	{
-		opts={"save the patients!","be careful of their symptoms:","broken bones","vommiting   ","bleeding out","get them to the drop zone","player one uses arrow keys ","player two uses esdf  "},
+		opts={"save the patients!","be careful of their symptoms:","  broken bones -> avoid walls"," vommiting    -> drive safe","  bleeding out -> quickly go!","get them to the drop zone","player one uses arrow keys ","player two uses esdf  "},
 		run={},
 		l=126,
 		w=85
@@ -504,11 +504,11 @@ function menu_draw()
 	spr(108,cam.x+96,cam.y+96,4,2)
 	spr(108,cam.x+96,cam.y+112,4,2,true,true)
 	if(game.menu_id==3)then
-		spr(1,cam.x+30,cam.y+44)
+		spr(1,cam.x+3,cam.y+44)
 		pal(12,10)
-		spr(1,cam.x+30,cam.y+54)
+		spr(1,cam.x+3,cam.y+54)
 		pal(12,14)
-		spr(1,cam.x+30,cam.y+64)
+		spr(1,cam.x+3,cam.y+64)
 		pal(12,12)
 		spr(19,cam.x+4,cam.y+74)
 		spr(19,cam.x+116,cam.y+74)
