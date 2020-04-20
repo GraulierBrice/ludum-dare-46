@@ -79,6 +79,7 @@ end
 -- main program
 function _init()
 	_reset_globals()
+	music(0)
 	local change1 = change_menu(1)
 	for i in all(menus[2].opts) do
 		add(menus[2].run,change1)
