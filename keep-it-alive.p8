@@ -243,13 +243,13 @@ end
 -- patients section
 
 function default_patient(x, y, col)
-	local unload_dmg = 0.5/30
-	return  (col == 10) and patient(x,y,10,unload_dmg,2,0,0,100,10)
-	or ((col == 14) and patient(x,y,10,unload_dmg,0,0.75,0,100,14)
-	or ((col == 11) and patient(x,y,10,unload_dmg,2,0.75,0,100,11)
-	or ((col == 8) and patient(x,y,10,unload_dmg,0,0.75,2,40,8)
-	or ((col == 1) and patient(x,y,10,unload_dmg,2,0,2,40,1)
-	or ((col == 4) and patient(x,y,10,unload_dmg,2,0.75,2,40,4)
+	local unload_dmg = 0.3/30
+	return  (col == 10) and patient(x,y,10,unload_dmg,1,0,0,100,10)
+	or ((col == 14) and patient(x,y,10,unload_dmg,0,0.5,0,100,14)
+	or ((col == 11) and patient(x,y,10,unload_dmg,1,0.5,0,100,11)
+	or ((col == 8) and patient(x,y,10,unload_dmg,0,0.5,2,40,8)
+	or ((col == 1) and patient(x,y,10,unload_dmg,1,0,2,40,1)
+	or ((col == 4) and patient(x,y,10,unload_dmg,1,0.5,2,40,4)
 	or patient(x,y,10,0,0,0,2,30,12))))))
 end
 
