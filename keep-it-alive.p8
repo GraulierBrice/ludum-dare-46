@@ -18,7 +18,8 @@ function _reset_globals()
 		menu_select=1,
 		map_id=1,
 		start=0,
-		nb_players=1
+		nb_players=1,
+		mode_1_duration=180
 	}
 
 	phy={
@@ -40,9 +41,7 @@ function _reset_globals()
 			patients_spawns={
 				vec_mul(vector(78,27), vector(8,8)),
 				vec_mul(vector(72,6), vector(8,8)),
-				vec_mul(vector(90,3), vector(8,8)),
 				vec_mul(vector(94,3), vector(8,8)),
-				vec_mul(vector(97,3), vector(8,8)),
 				vec_mul(vector(122,8), vector(8,8)),
 				vec_mul(vector(123,20), vector(8,8))
 			},
@@ -58,8 +57,8 @@ function _reset_globals()
 			},
 			morphines={
 				vec_mul(vector(91,6), vector(8,8)),
-				vec_mul(vector(69,20), vector(8,8)),
-				vec_mul(vector(117,26), vector(8,8))
+				vec_mul(vector(71,16), vector(8,8)),
+				vec_mul(vector(125,11), vector(8,8))
 			},
 			bounds={min=vector(64*8,0), max=vector(128*8,32*8)}
 		}
@@ -119,7 +118,7 @@ function game_start(nb_players, map, mode)
 	morphines={}
 	patients={}
 	particles = {}
-	game.start=time()+180
+	game.start=time()+game.mode_1_duration
 	game.mode=mode
 	game.score = 0
 
@@ -502,7 +501,7 @@ menus = {
 	{
 		opts={"save them fast", "save them all", "add player 2", "how to play","credits"},
 		run={
-			function() game_start(game.nb_players, 1, 1) end,
+			change_menu(6),
 			function() game_start(game.nb_players, 1, 2) end,
 			function() 
 				if (game.nb_players==1) then game.nb_players=2 menus[1].opts[3]="add player 2"
@@ -537,7 +536,16 @@ menus = {
 		l=23*4+4,
 		w=45
 	},
-
+	{
+		opts={"quick game -> 3m", "classical -> 5m", "the long run -> 10m", "back to menu"},
+		run={
+			function() game.mode_1_duration=180 game_start(game.nb_players, 1, 1) end,
+			function() game.mode_1_duration=300 game_start(game.nb_players, 1, 1) end,
+			function() game.mode_1_duration=600 game_start(game.nb_players, 1, 1) end,
+			change_menu(1)},
+		l=23*4+4,
+		w=45
+	},
 	display = function(menu)
 		draw_menu_box(cam.x+64-menu.l/2,cam.y+64-menu.w/2,menu.l,menu.w,menu.opts) end
 	}
