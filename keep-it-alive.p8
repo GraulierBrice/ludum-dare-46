@@ -83,6 +83,9 @@ function _init()
 	for i in all(menus[2].opts) do
 		add(menus[2].run,change1)
 	end
+	for i in all(menus[3].opts) do
+		add(menus[3].run,change1)
+	end
 end
 
 function _update()
@@ -460,21 +463,29 @@ end
 
 menus = {
 	{
-		opts={"one-player","two-player coop","two-play versus","credits"},
+		opts={"one-player","two-player coop","two-play versus", "how to play","credits"},
 		run={
 			function() game_start(1, 2, 1) end,
 			function() game_start(2, 2, 1) end,
 			function() game_start(2, 1, nil) end,
+			change_menu(3),
 			change_menu(2)},
 		--run={function() game.play=true end,nil,nil,},
 		l=72,
-		w=45
+		w=55
 	},
 	{ 	
 		opts={"game designers  ","uLQUIRO","bRICE","programmers     ","uLQUIRO","bRICE","sound designer  ","pUDDY/pRODUCER-SAN"},
 		run={},
 		l=72,
 		w=85
+	},
+	{
+		opts={"save the patients!","be careful of their symptoms:","broken bones","vommiting   ","bleeding out","get them to the drop zone","player one uses arrow keys ","player two uses esdf  "},
+		run={},
+		l=126,
+		w=85
+
 	},
 	display = function(menu)
 		draw_menu_box(cam.x+64-menu.l/2,cam.y+64-menu.w/2,menu.l,menu.w,menu.opts) end
@@ -492,6 +503,16 @@ function menu_draw()
 	menus.display(menus[game.menu_id])
 	spr(108,cam.x+96,cam.y+96,4,2)
 	spr(108,cam.x+96,cam.y+112,4,2,true,true)
+	if(game.menu_id==3)then
+		spr(1,cam.x+30,cam.y+44)
+		pal(12,10)
+		spr(1,cam.x+30,cam.y+54)
+		pal(12,14)
+		spr(1,cam.x+30,cam.y+64)
+		pal(12,12)
+		spr(19,cam.x+4,cam.y+74)
+		spr(19,cam.x+116,cam.y+74)
+	end
 end
 
 function draw_menu_box(x,y,l,w, opts)
