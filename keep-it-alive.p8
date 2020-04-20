@@ -108,6 +108,7 @@ end
 
 -->8
 -- game program
+death_message_lt=0
 cars={}
 patients={}
 dropzones={}
@@ -358,6 +359,7 @@ function update_car(car, player)
 	if car.load and car.load.hp <= 0 then
 		del(patients,car.load)
 		car.load = nil
+		death_message_lt = time()+2
 	end
 end
 
@@ -445,6 +447,7 @@ function draw_screen(player, cam_offset, ui_offset)
 		end
 		draw_particles()
 		draw_car(cars[i])
+		if(death_message_lt>time()) draw_menu_box(cam.x+32,cam.y+16,72,12,{"patient has died"})
 		if(cars[i].score) print("sCORE:"..cars[i].score, cam.x,cam.y+65*(i-1),9)
 	end
 end
