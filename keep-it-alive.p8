@@ -248,12 +248,13 @@ end
 -- patients section
 
 function default_patient(x, y, col)
-	return  (col == 10) and patient(x,y,10,0,2,0,0,100,10)
-	or ((col == 14) and patient(x,y,10,0,0,0.75,0,100,14)
-	or ((col == 11) and patient(x,y,10,0,2,0.75,0,100,11)
-	or ((col == 8) and patient(x,y,10,0,0,0.75,2,40,8)
-	or ((col == 1) and patient(x,y,10,0,2,0,2,40,1)
-	or ((col == 4) and patient(x,y,10,0,2,0.75,2,40,4)
+	local unload_dmg = 0.5/30
+	return  (col == 10) and patient(x,y,10,unload_dmg,2,0,0,100,10)
+	or ((col == 14) and patient(x,y,10,unload_dmg,0,0.75,0,100,14)
+	or ((col == 11) and patient(x,y,10,unload_dmg,2,0.75,0,100,11)
+	or ((col == 8) and patient(x,y,10,unload_dmg,0,0.75,2,40,8)
+	or ((col == 1) and patient(x,y,10,unload_dmg,2,0,2,40,1)
+	or ((col == 4) and patient(x,y,10,unload_dmg,2,0.75,2,40,4)
 	or patient(x,y,10,0,0,0,2,30,12))))))
 end
 
@@ -292,7 +293,13 @@ function update_patient(patient)
 			patient.hp -= phy.dt * patient.dmg_loaded
 			if(patient.dmg_loaded>0)blood(cars[patient.car_id].pos,true)
 		end
-	end
+	else
+		patient.hp -= patient.dmg_unloaded
+		if(patient.hp<0)then
+			del(patients,patient)
+			patient=nil
+		end
+	end 
 end
 
 function dropzone_hit(dropzone, other, rel_vel)
@@ -435,34 +442,49 @@ function draw_screen(player, cam_offset, ui_offset)
 
 	if(game.mode==1) print("time "..flr(game.start-time()),cam.x+64-#"time"*4,cam.y,9)
 
-	for i=1,#cars do
+	
 		for patient in all(patients) do
 			if (patient.car_id <= 0) then
-				local car_dists = {}
 				local bound_x = min(cam.x+125,max(cam.x-2,patient.pos.x))
 				local bound_y = {min(cam.y+128/#cars-4,max(cam.y-2,patient.pos.y)),min(cam.y+126,max(cam.y-62,patient.pos.y))}
-				car_dist=vector(abs(cars[i].pos.x-1-patient.pos.x),abs(cars[i].pos.y-1-patient.pos.y))
+				for i=1,#cars do
+					local car_dist=vec_sub(cars[i].pos,patient.pos)
+					if (abs(car_dist.x)<=68 and abs(car_dist.y) <=68/#cars) patient.show=true
+				end
 				pal(12,patient.col)
-				if car_dist.x<=68 and car_dist.y <=68/#cars then
-					spr(1,patient.pos.x-4, patient.pos.y-4)
-				else
-					if car_dist.x>#cars*car_dist.y then
-						sspr(40,0,5,5,bound_x,bound_y[i],5,5)
-					else
-						sspr(43,3,5,5,bound_x,bound_y[i],5,5)
+				if patient.show then
+					local l = vec_add(patient.pos, vector(-patient.hp/2,10))
+					local r = vec_add(patient.pos, vector(patient.hp/2,10))
+					line(l.x, l.y, r.x, r.y, 8)
+					spr(1,patient.pos.x-4, patient.pos.y)
+					patient.show = true
+				elseif patient.hp>4 or time()%0.5==0 then
+					for i=1,#cars do
+					local car_dist=vec_sub(cars[i].pos,patient.pos)
+						if abs(car_dist.x)>#cars*abs(car_dist.y) then
+							sspr(40,0,5,5,bound_x,bound_y[i],5,5)
+						else
+							sspr(43,3,5,5,bound_x,bound_y[i],5,5)
+						end
 					end
 				end
+				patient.show=false
 				pal(12,12)
 			else
 				print(patient.car_id, cam.x, cam.y, 11)
 				print(patient.hp.."/"..patient.max_hp, cam.x, cam.y+10, 8)
 			end
 		end
+	for i=1,#cars do
 		draw_particles()
 		draw_car(cars[i])
 		if(death_message_lt>time()) draw_menu_box(cam.x+32,cam.y+16,72,12,{"patient has died"})
 		if(cars[i].score) print("sCORE:"..cars[i].score, cam.x,cam.y+65*(i-1),9)
 	end
+	for p in all(patients) do
+		p.show=false
+	end
+
 end
 
 -->8
