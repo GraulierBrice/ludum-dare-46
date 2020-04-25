@@ -19,7 +19,8 @@ function _reset_globals()
 		map_id=1,
 		start=0,
 		nb_players=1,
-		mode_1_duration=180
+		mode_1_duration=180,
+		difficulty=1
 	}
 
 	phy={
@@ -102,6 +103,7 @@ end
 -->8
 -- game program
 death_message_lt=0
+tips_message_lt=0
 cars={}
 patients={}
 dropzones={}
@@ -273,6 +275,7 @@ function patient_hit(patient, other, rel_vel)
 			if (not other.load and vec_len(rel_vel) < phy.max_vel_action) then
 				other.load = patient
 				patient.car_id = 1
+				tips_message_lt=time()+2
 			end
 		end
 	end
@@ -281,15 +284,16 @@ end
 function update_patient(patient)
 	if (patient.car_id > 0) then
 		if (car_drifting(cars[patient.car_id])) then
-			patient.hp -= phy.dt * patient.dmg_drift
+			patient.hp -= phy.dt * patient.dmg_drift*game.difficulty
 			if(patient.dmg_drift>0)blood(cars[patient.car_id].pos,true)
 		else
-			patient.hp -= phy.dt * patient.dmg_loaded
+			patient.hp -= phy.dt * patient.dmg_loaded*game.difficulty
 			if(patient.dmg_loaded>0)blood(cars[patient.car_id].pos,true)
 		end
 	else
-		patient.hp -= patient.dmg_unloaded
+		patient.hp -= patient.dmg_unloaded*game.difficulty
 		if(patient.hp<0)then
+			tips_message_lt=0
 			if (game.mode==1) then
 				del(patients,patient)
 				del(colliders, patient)
@@ -347,7 +351,7 @@ function car_hit(car, other, rel_vel)
 	if (not other.trg and car.load != nil) then
 		local speed = vec_len(rel_vel)
 		if (speed >= car.load.hit_dmg_threshold) then
-			car.load.hp -= car.load.hit_dmg
+			car.load.hp -= car.load.hit_dmg*game.difficulty
 			blood(car.pos,true)
 			blood(car.pos,true)
 		end
@@ -482,6 +486,8 @@ function draw_screen(player, cam_offset, ui_offset)
 		draw_car(cars[i])
 		if(death_message_lt>time()) then
 			draw_menu_box(cam.x+32,cam.y+16,72,12,{"patient has died"})
+		elseif (tips_message_lt>time() and cars[i].load) then
+			show_tip(cars[i].load.col)
 		end
 		if(game.score) print("sCORE:"..game.score, cam.x,cam.y+65*(i-1),9)
 	end
@@ -499,18 +505,22 @@ end
 
 menus = {
 	{
-		opts={"save them fast", "save them all", "add player 2", "how to play","credits"},
+		opts={"save them fast", "save them all", "mode: normal", "add player 2", "how to play","credits"},
 		run={
 			change_menu(6),
 			function() game_start(game.nb_players, 1, 2) end,
 			function() 
-				if (game.nb_players==1) then game.nb_players=2 menus[1].opts[3]="add player 2"
-				else  game.nb_players=1 menus[1].opts[3]="remove player 2" end end,
+				if (game.difficulty==1) then game.difficulty=1.5 menus[1].opts[3]="mode: hard"
+				elseif (game.difficulty==1.5) then game.difficulty=0.5 menus[1].opts[3]="mode: easy"
+				elseif (game.difficulty==0.5) then game.difficulty=1 menus[1].opts[3]="mode: normal" end end,
+			function() 
+				if (game.nb_players==1) then game.nb_players=2 menus[1].opts[4]="add player 2"
+				else  game.nb_players=1 menus[1].opts[4]="remove player 2" end end,
 			change_menu(3),
 			change_menu(2)},
 		--run={function() game.play=true end,nil,nil,},
 		l=82,
-		w=55
+		w=65
 	},
 	{ 	
 		opts={" game designers  ","tHEO fAFET","bRICE"," programmers     ","tHEO fAFET","bRICE"," sound designer  "," pUDDY/pRODUCER-SAN"},
@@ -584,8 +594,11 @@ function menu_draw()
 		spr(16, cam.x+rb.pos.x, cam.y+rb.pos.y)
 	end
 	if (game.menu_id==1) then
-		if (game.nb_players==1) then menus[1].opts[3]="add player 2"
-		else menus[1].opts[3]="remove player 2" end
+		if (game.nb_players==1) then menus[1].opts[4]="add player 2"
+		else menus[1].opts[4]="remove player 2" end
+		if (game.difficulty==1) then menus[1].opts[3]="mode: normal"
+		elseif (game.difficulty==1.5) then menus[1].opts[3]="mode: hard"
+		elseif (game.difficulty==0.5) then menus[1].opts[3]="mode: easy" end
 	end
 	menus.display(menus[game.menu_id])
 	spr(108,cam.x+96,cam.y+96,4,2)
@@ -627,6 +640,10 @@ end
 function selection(n)
 	if game.menu_select==n then color(7) else color(6) end
 end
+
+
+
+
 -->8
 -- physics
 colliders={}
@@ -714,7 +731,7 @@ function rb_update(rb)
 	if (fget(mget(p.x,p.y), 2)) then
 		phy.friction=1.2
 		if (vec_len(data.new_vel)>45) then
-			if(rb.load) then rb.load.hp -= rb.load.dmg_drift/3 blood(rb.pos,true) end
+			if(rb.load) then rb.load.hp -= rb.load.dmg_drift/3*game.difficulty blood(rb.pos,true) end
 		end
 	else phy.friction=1.5
 	end
@@ -1007,6 +1024,21 @@ function colour_to_score(c)
 	or 1)))))
 end
 
+function color_to_tip(c)
+	return (c==10) and "don't drift"
+	or (c==14) and "hurry up"
+	or (c==11) and "hurry up and avoid drifting"
+	or (c==8) and "don't crash and hurry up"
+	or (c==1) and "no drifting and avoid walls"
+	or (c==4) and "good luck..."
+	or "drive him to the hospital"
+end
+
+function show_tip(c)
+	msg = color_to_tip(c)
+	draw_menu_box(cam.x+64-2*#msg-2,cam.y+16,#msg*4+4,12,{msg})
+end
+
 particles = {}
 nparts = 0
 --pcl = {}
@@ -1294,9 +1326,9 @@ __map__
 000000000000002115221422112215221423000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002b0e1f2d0f1b0f0f0f0f0f0f0f0f0f0f0f0f0f0a1c1c090f0f4a0f0f0f0f0f0f0f490f0f0f0f0d0d0d0e084b0f0e3b2b2b2b0f0f084b0f0f0f0a1c1c1c1c1c0b
 000000000000002122222222202222222223000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002b0e2e2f0f0f0f0f0f0f0f0f3650370f0f0f0f0f0a1c1c090f4a0f1e0f1e0f1e0f490f0f0f0e2c2c2d0e084b0f0e3b2b2b2b0f0f1c47090f0f0f0a1c1c1c0b0f
 000000000000000d0d0d0c131313090d0d0d000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002b0f0d0d0f0f0f0f0f0f0f36322732370f3650370f0a1c1c094a2829292929292a490f0f0f0e2c1f2d0e084b0f0e3b2b2b2b1e0f0a4847090d0d0d0d0d0d0d0d
-000000000000001d1818181818181818181d000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002b0e2d2d0f0f0f0f0f0f0d31343430330d3130331e0f0a1c1c090d0d0d0d0d0d0d0d0d0f0f0e2e2e2f0e084b0f0e3b2b2b2b0f0f0f0a1c1c4d4d4d4d4d4d4d4d
+000000000000001d1818181818181818181d000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002b0e2c2d0f0f0f0f0f0f0d31343430330d3130331e0f0a1c1c090d0d0d0d0d0d0d0d0d0f0f0e2e2e2f0e084b0f0e3b2b2b2b0f0f0f0a1c1c4d4d4d4d4d4d4d4d
 000000000000002b2b2b2b2b2b2b2b2b2b2b000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002b0e1f2d0f1b0f0f0f0f0a1c1c1c1c1c1c1c1c1c1c4d1c4d1c4d1c4d1c4d1c4d1c4d1c090f0f0f0f0f0e084b0f0e3b2b2b2b0f0f0f0e1c1c1c1c1c1c1c1c1c1c
-000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002b0e2f2f0f0f0f0f0f0f0f0f0f0c1c0f0f0f0f0a1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c090d0d0d0d0c1c1c0f0e3b2b2b2b1e0f0f0c1c1c4c4c4c4c4c4c4c4c
+000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002b0e2e2f0f0f0f0f0f0f0f0f0f0c1c0f0f0f0f0a1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c090d0d0d0d0c1c1c0f0e3b2b2b2b1e0f0f0c1c1c4c4c4c4c4c4c4c4c
 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002b0f0d0d0f0f0f0f0f0f0f1e0f4c1c0f1e0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0a1c1c1c4d1c4d1c1c1c0f0e3b2b2b2b0f0f0c46450b0f0f0f0f0f0f0f0f
 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002b0e2c2d0f0f0f0f0f0f0f0f0f4c1c0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0a1c1c1c1c1c1c1c0b0f0e3c3d3d3e0d0c46450b0f0f0f0f0f0f0f0f0f
 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002b0e1f2d0f1b0f0f0f0f0f1e0f4c1c0f1e0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0c1c1c1c1c1c46450b0f0f0f0f0f0f0f0f0f0f
